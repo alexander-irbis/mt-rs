@@ -1,0 +1,8 @@
+[package]
+name = "mt"
+version = "0.1.0"
+authors = ["Alexander Irbis <irbis.labs@gmail.com>"]
+
+[features]
+
+[dependencies]
