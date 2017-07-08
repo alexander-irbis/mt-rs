@@ -61,12 +61,14 @@ impl <H> MerkleTree<H> where H: MTHashFunction {
 mod tests {
     use abc::*;
     use super::MerkleTree;
-    use fun::defaulthash::DefaultHash;
+    use fun::double::DoubleHash;
+    use fun::sha256::Sha256Hash;
 
     #[test]
     fn merkle_tree_works() {
         let data: [&[u8]; 3] = [b"123", b"321", b"555"];
-        let mut tree = MerkleTree::<DefaultHash>::new();
+        // let mut tree = MerkleTree::<Sha256Hash>::new();
+        let mut tree = MerkleTree::<DoubleHash<Sha256Hash>>::new();
         tree.push_with_data(&data[0]);
         tree.push_with_data(&data[1]);
         tree.push_with_data(&data[2]);

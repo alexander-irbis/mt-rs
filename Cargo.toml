@@ -6,3 +6,4 @@ authors = ["Alexander Irbis <irbis.labs@gmail.com>"]
 [features]
 
 [dependencies]
+ring = "0.11"
