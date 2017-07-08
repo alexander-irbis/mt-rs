@@ -1,16 +1,50 @@
+use std::fmt;
+
 use super::abc::*;
 
 
-pub struct MemoryStorage<V> where V: DataBlock {
+pub struct MemoryDataStorage<V> where V: DataBlock {
     data: Vec<V>
 }
 
-impl <V> DataStorage for MemoryStorage<V> where V: DataBlock {
+impl <V> Default for MemoryDataStorage<V> where V: DataBlock {
+    fn default() -> Self {
+        MemoryDataStorage {
+            data: Vec::new()
+        }
+    }
+}
+
+impl<V> MemoryDataStorage<V> where V: DataBlock {
+    pub fn new() -> Self {
+        Default::default()
+    }
+}
+
+impl <V> fmt::Debug for MemoryDataStorage<V> where V: DataBlock {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "MemoryDataStorage(len={})", self.len())
+    }
+}
+
+impl <V> DataStorage for MemoryDataStorage<V> where V: DataBlock {
     type Block = V;
     type StorageError = ();
 
+    fn len(&self) -> usize {
+        self.data.len()
+    }
+
+    fn is_empty(&self) -> bool {
+        self.data.is_empty()
+    }
+
     fn get(&self, index: usize) -> Option<&Self::Block> {
         self.data.get(index)
+    }
+
+    fn iter<'s: 'i, 'i>(&'s self) -> Box<Iterator<Item=&'s Self::Block> + 'i> {
+        Box::new(self.data.iter())
     }
 
     fn range<'s: 'i, 'i>(&'s self, from: usize, to: usize) -> Box<Iterator<Item=&'s Self::Block> + 'i> {

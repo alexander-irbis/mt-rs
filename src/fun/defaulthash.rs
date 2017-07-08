@@ -7,7 +7,7 @@ use abc::*;
 #[derive(Debug, Default, Clone, Copy)]
 pub struct DefaultHash();
 
-#[derive(Debug, Default, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct DefaultHashValue(pub u64);
 
 #[derive(Debug, Default, Clone)]

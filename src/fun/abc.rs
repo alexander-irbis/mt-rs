@@ -5,7 +5,7 @@ pub trait MTContext {
     fn finish(self) -> Self::Out;
 }
 
-pub trait MTValue: MTHash {
+pub trait MTValue: MTHash + Eq {
     //fn as_bytes(&self) -> &[u8];
 }
 

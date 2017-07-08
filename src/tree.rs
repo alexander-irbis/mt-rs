@@ -1,26 +1,37 @@
 use abc::*;
 
 #[derive(Debug, Default)]
-pub struct MerkleTree<H> where H: MTAlgorithm {
+pub struct MerkleTree<A, DS> where A: MTAlgorithm, DS: DataStorage {
     // Hashes are stored as layers
     // In the begin (index 0) is the bottom level 0 with hashes of the data
     // next layers keep hashes of previous levels, till the root
-    layers: Vec<Vec<H::Value>>,
+    layers: Vec<Vec<A::Value>>,
+    data: DS,
 }
 
-impl <H> MerkleTree<H> where H: MTAlgorithm {
-    pub fn new() -> Self {
-        MerkleTree {
+impl <A, DS> MerkleTree<A, DS> where A: MTAlgorithm, DS: DataStorage {
+    pub fn new(data: DS) -> Self {
+        let mut tree = MerkleTree {
             layers: Vec::new(),
+            data,
+        };
+        if !tree.data().is_empty() {
+            tree.rebuild();
         }
+        tree
     }
 
-    pub fn push_with_data<D: MTHash>(&mut self, data: &D) {
-        let hash = H::eval_hash(data);
+    pub fn data(&self) -> &DS {
+        &self.data
+    }
+
+    pub fn push(&mut self, data: DS::Block) {
+        let hash = A::eval_hash(&data);
+        self.data.push(data).unwrap();
         self.push_hash(0, hash)
     }
 
-    fn push_hash(&mut self, layer: usize, hash: H::Value) {
+    fn push_hash(&mut self, layer: usize, hash: A::Value) {
         debug_assert!(layer <= self.layers.len());
         if self.layers.len() == layer {
             self.layers.push(Vec::new());
@@ -40,7 +51,7 @@ impl <H> MerkleTree<H> where H: MTAlgorithm {
                 } else {
                     (&layer[len - 1], &layer[len - 1])
                 };
-                H::eval_hash(&pair)
+                A::eval_hash(&pair)
             };
             if layer_is_last || len % 2 == 1 {
                 self.push_hash(layer + 1, hash);
@@ -56,12 +67,46 @@ impl <H> MerkleTree<H> where H: MTAlgorithm {
         }
     }
 
-    pub fn try_root(&self) -> Option<&H::Value> {
+    pub fn try_root(&self) -> Option<&A::Value> {
         self.layers.iter().last().and_then(|layer| layer.iter().last())
     }
 
-    pub fn root(&self) -> &H::Value {
+    pub fn root(&self) -> &A::Value {
         self.try_root().expect("Tree is empty")
+    }
+
+    pub fn rebuild(&mut self) {
+        self.layers.clear();
+        if self.data.is_empty() {
+            return;
+        }
+        let mut layer = Vec::with_capacity(self.data.len());
+        for block in self.data.iter() {
+            let hash = A::eval_hash(block);
+            layer.push(hash);
+        }
+        self.layers.push(layer);
+        loop {
+            let layer = {
+                let source = self.layers.iter().last().unwrap();
+                let len = source.len();
+                debug_assert!(len > 0);
+                if len == 1 {
+                    break;
+                }
+                let mut layer = Vec::with_capacity(len / 2 + len % 2);
+                for chunk in source.chunks(2) {
+                    let hash = if chunk.len() == 2 {
+                        A::eval_hash(&chunk)
+                    } else {
+                        A::eval_hash(&(&chunk[0], &chunk[0]))
+                    };
+                    layer.push(hash);
+                }
+                layer
+            };
+            self.layers.push(layer);
+        }
     }
 }
 
@@ -70,15 +115,34 @@ mod tests {
     use super::MerkleTree;
     use fun::double::DoubleHash;
     use fun::sha256::Sha256;
+    use data_storage::memory::MemoryDataStorage;
+
+    static DATA: [&[u8]; 3] = [b"123", b"321", b"555"];
+
+    fn sample_tree() -> MerkleTree<DoubleHash<Sha256>, MemoryDataStorage<&'static [u8]>> {
+        let mut tree = MerkleTree::new(MemoryDataStorage::new());
+        tree.push(DATA[0]);
+        tree.push(DATA[1]);
+        tree.push(DATA[2]);
+        tree
+    }
 
     #[test]
     fn merkle_tree_works() {
-        let data: [&[u8]; 3] = [b"123", b"321", b"555"];
-        let mut tree = MerkleTree::<DoubleHash<Sha256>>::new();
-        tree.push_with_data(&data[0]);
-        tree.push_with_data(&data[1]);
-        tree.push_with_data(&data[2]);
-        println!("{:?}", tree);
-        println!("{:?}", tree.root());
+        let tree = sample_tree();
+        // println!("{:?}", tree);
+        // println!("{:?}", tree.root());
+        let root = "SHA256:895073a7ee449758eec65efa6a9dcf51c41fa7b7a0e01b240c85d7fc230390e8";
+        assert_eq!(format!("{:?}", tree.root()), root)
+    }
+
+    #[test]
+    fn merkle_tree_rebuilds() {
+        let a = sample_tree();
+        let mut b = sample_tree();
+        b.rebuild();
+        // println!("\n TREE a:\n\n{:?}", a);
+        // println!("\n TREE b:\n\n{:?}", b);
+        assert_eq!(a.root(), b.root());
     }
 }
