@@ -1,5 +1,6 @@
 use abc::*;
 
+
 #[derive(Debug, Default)]
 pub struct MerkleTree<A, DS> where A: MTAlgorithm, DS: DataStorage {
     // Hashes are stored as layers
@@ -23,6 +24,11 @@ impl <A, DS> MerkleTree<A, DS> where A: MTAlgorithm, DS: DataStorage {
 
     pub fn data(&self) -> &DS {
         &self.data
+    }
+
+    #[cfg(test)]
+    pub fn data_mut(&mut self) -> &mut DS {
+        &mut self.data
     }
 
     pub fn push(&mut self, data: DS::Block) {
@@ -108,6 +114,52 @@ impl <A, DS> MerkleTree<A, DS> where A: MTAlgorithm, DS: DataStorage {
             self.layers.push(layer);
         }
     }
+
+    pub fn check_data(&self) -> Result<(), CheckError> {
+        if self.data.is_empty() && self.layers.is_empty() {
+            return Ok(());
+        } else if self.data.is_empty() || self.layers.is_empty() {
+            return Err(CheckError::InconstistentState);
+        } else if self.data.len() != self.layers[0].len() {
+            return Err(CheckError::InconstistentState);
+        }
+        let layer = &self.layers[0];
+        for (block, cs) in self.data.iter().zip(layer.iter()) {
+            let hash = A::eval_hash(block);
+            if hash != *cs {
+                return Err(CheckError::DataDoesNotMatchTheChecksum);
+            }
+        }
+        Ok(())
+    }
+
+    pub fn check_tree(&self) -> Result<(), CheckError> {
+        if self.layers.is_empty() {
+            return Ok(());
+        } else if self.layers.len() == 1 && self.layers[0].len() == 1 {
+            return Ok(());
+        }
+        for window in self.layers.windows(2).rev() {
+            let (source, derived) = (&window[0], &window[1]);
+            if derived.len() != source.len() / 2 + source.len() % 2 {
+                return Err(CheckError::InconstistentState);
+            }
+        }
+        for window in self.layers.windows(2).rev() {
+            let (source, derived) = (&window[0], &window[1]);
+            for (chunk, cs) in source.chunks(2).zip(derived.iter()) {
+                let hash = if chunk.len() == 2 {
+                    A::eval_hash(&chunk)
+                } else {
+                    A::eval_hash(&(&chunk[0], &chunk[0]))
+                };
+                if hash != *cs {
+                    return Err(CheckError::DataDoesNotMatchTheChecksum);
+                }
+            }
+        }
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -133,7 +185,20 @@ mod tests {
         // println!("{:?}", tree);
         // println!("{:?}", tree.root());
         let root = "SHA256:895073a7ee449758eec65efa6a9dcf51c41fa7b7a0e01b240c85d7fc230390e8";
-        assert_eq!(format!("{:?}", tree.root()), root)
+        assert_eq!(format!("{:?}", tree.root()), root);
+        assert!(tree.check_tree().is_ok());
+        assert!(tree.check_data().is_ok());
+    }
+
+    #[test]
+    fn merkle_tree_check() {
+        let mut tree = sample_tree();
+        tree.data_mut().data_mut()[1] = b"666";
+        assert!(tree.check_data().is_err());
+
+        let mut tree = sample_tree();
+        tree.layers[0][0] = tree.layers[0][1];
+        assert!(tree.check_tree().is_err());
     }
 
     #[test]

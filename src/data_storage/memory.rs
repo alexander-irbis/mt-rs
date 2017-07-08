@@ -19,6 +19,11 @@ impl<V> MemoryDataStorage<V> where V: DataBlock {
     pub fn new() -> Self {
         Default::default()
     }
+
+    #[cfg(test)]
+    pub fn data_mut(&mut self) -> &mut Vec<V> {
+        &mut self.data
+    }
 }
 
 impl <V> fmt::Debug for MemoryDataStorage<V> where V: DataBlock {
