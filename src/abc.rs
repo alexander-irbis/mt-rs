@@ -1,18 +1,18 @@
-pub trait MTHasher {
+pub trait MTContext {
     type Out: MTValue;
     fn new() -> Self;
-    fn write(&mut self, bytes: &[u8]);
+    fn update(&mut self, msg: &[u8]);
     fn finish(self) -> Self::Out;
 }
 
-pub trait MTValue: MTHashable {
+pub trait MTValue: MTHash {
     //fn as_bytes(&self) -> &[u8];
 }
 
-pub trait MTHashable {
-    fn hash<H: MTHasher>(&self, state: &mut H);
+pub trait MTHash {
+    fn hash<H: MTContext>(&self, state: &mut H);
 
-    fn hash_slice<H: MTHasher>(data: &[Self], state: &mut H)
+    fn hash_slice<H: MTContext>(data: &[Self], state: &mut H)
         where Self: Sized
     {
         for piece in data {
@@ -21,49 +21,41 @@ pub trait MTHashable {
     }
 }
 
-pub trait MTHashFunction {
+pub trait MTAlgorithm {
     type Value: MTValue;
-    type Hasher: MTHasher<Out=Self::Value>;
+    type Context: MTContext<Out=Self::Value>;
 
-    fn eval_hash<H>(data: &H) -> Self::Value where H: MTHashable {
-        let mut hasher = Self::Hasher::new();
-        data.hash(&mut hasher);
-        hasher.finish()
+    fn eval_hash<H>(data: &H) -> Self::Value where H: MTHash {
+        let mut context = Self::Context::new();
+        data.hash(&mut context);
+        context.finish()
     }
 
     //fn hash<D: Hashable>(data: D) -> Self;
 }
 
 
-impl <'a> MTHashable for &'a [u8] {
-    fn hash<S: MTHasher>(&self, state: &mut S) {
-        state.write(self)
+impl <'a> MTHash for &'a [u8] {
+    fn hash<S: MTContext>(&self, state: &mut S) {
+        state.update(self)
     }
 }
 
-impl <'a, H> MTHashable for &'a H where H: MTHashable {
-    fn hash<S: MTHasher>(&self, state: &mut S) {
+impl <'a, H> MTHash for &'a H where H: MTHash {
+    fn hash<S: MTContext>(&self, state: &mut S) {
         (*self).hash(state)
     }
 }
 
-impl <'a, H> MTHashable for &'a [H] where H: MTHashable {
-    fn hash<S: MTHasher>(&self, state: &mut S) {
+impl <'a, H> MTHash for &'a [H] where H: MTHash {
+    fn hash<S: MTContext>(&self, state: &mut S) {
         H::hash_slice(self, state)
     }
 }
 
-impl <H> MTHashable for (H, H) where H: MTHashable {
-    fn hash<S: MTHasher>(&self, state: &mut S) {
+impl <H> MTHash for (H, H) where H: MTHash {
+    fn hash<S: MTContext>(&self, state: &mut S) {
         H::hash(&self.0, state);
         H::hash(&self.1, state);
     }
 }
-
-
-// With #![feature(specialization)]
-// impl <T> MTHasher for T where T: Default {
-//     default fn new() -> Self {
-//         Default::default()
-//     }
-// }

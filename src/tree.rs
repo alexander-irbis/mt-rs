@@ -1,21 +1,21 @@
 use abc::*;
 
 #[derive(Debug, Default)]
-pub struct MerkleTree<H> where H: MTHashFunction {
+pub struct MerkleTree<H> where H: MTAlgorithm {
     // Hashes are stored as layers
     // In the begin (index 0) is the bottom level 0 with hashes of the data
     // next layers keep hashes of previous levels, till the root
     layers: Vec<Vec<H::Value>>,
 }
 
-impl <H> MerkleTree<H> where H: MTHashFunction {
+impl <H> MerkleTree<H> where H: MTAlgorithm {
     pub fn new() -> Self {
         MerkleTree {
             layers: Vec::new(),
         }
     }
 
-    pub fn push_with_data<D: MTHashable>(&mut self, data: &D) {
+    pub fn push_with_data<D: MTHash>(&mut self, data: &D) {
         let hash = H::eval_hash(data);
         self.push_hash(0, hash)
     }
@@ -55,23 +55,30 @@ impl <H> MerkleTree<H> where H: MTHashFunction {
             }
         }
     }
+
+    pub fn try_root(&self) -> Option<&H::Value> {
+        self.layers.iter().last().and_then(|layer| layer.iter().last())
+    }
+
+    pub fn root(&self) -> &H::Value {
+        self.try_root().expect("Tree is empty")
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use abc::*;
     use super::MerkleTree;
     use fun::double::DoubleHash;
-    use fun::sha256::Sha256Hash;
+    use fun::sha256::Sha256;
 
     #[test]
     fn merkle_tree_works() {
         let data: [&[u8]; 3] = [b"123", b"321", b"555"];
-        // let mut tree = MerkleTree::<Sha256Hash>::new();
-        let mut tree = MerkleTree::<DoubleHash<Sha256Hash>>::new();
+        let mut tree = MerkleTree::<DoubleHash<Sha256>>::new();
         tree.push_with_data(&data[0]);
         tree.push_with_data(&data[1]);
         tree.push_with_data(&data[2]);
-        println!("{:?}", tree)
+        println!("{:?}", tree);
+        println!("{:?}", tree.root());
     }
 }

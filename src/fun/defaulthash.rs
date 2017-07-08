@@ -11,29 +11,29 @@ pub struct DefaultHash();
 pub struct DefaultHashValue(pub u64);
 
 #[derive(Debug, Default, Clone)]
-pub struct DefaultHashHasher {
-    hasher: DefaultHasher,
+pub struct DefaultHashContext {
+    context: DefaultHasher,
 }
 
 
-impl MTHashFunction for DefaultHash {
+impl MTAlgorithm for DefaultHash {
     type Value = DefaultHashValue;
-    type Hasher = DefaultHashHasher;
+    type Context = DefaultHashContext;
 }
 
-impl MTHasher for DefaultHashHasher {
+impl MTContext for DefaultHashContext {
     type Out = DefaultHashValue;
 
     fn new() -> Self {
-        DefaultHashHasher::default()
+        DefaultHashContext::default()
     }
 
-    fn write(&mut self, msg: &[u8]) {
-        self.hasher.write(msg)
+    fn update(&mut self, msg: &[u8]) {
+        self.context.write(msg)
     }
 
     fn finish(self) -> Self::Out {
-        DefaultHashValue(self.hasher.finish())
+        DefaultHashValue(self.context.finish())
     }
 }
 
@@ -41,11 +41,11 @@ impl MTValue for DefaultHashValue {
 
 }
 
-impl MTHashable for DefaultHashValue {
-    fn hash<H: MTHasher>(&self, state: &mut H) {
+impl MTHash for DefaultHashValue {
+    fn hash<H: MTContext>(&self, state: &mut H) {
         let buf: [u8; 8] = unsafe {
             ::std::mem::transmute(self.0.to_le())
         };
-        state.write(&buf)
+        state.update(&buf)
     }
 }

@@ -8,44 +8,44 @@ use abc::*;
 
 
 #[derive(Debug, Default, Clone, Copy)]
-pub struct Sha256Hash();
+pub struct Sha256();
 
 #[derive(Debug, Clone, Copy)]
 pub struct Sha256Value(pub Digest);
 
 #[derive(Clone)]
-pub struct Sha256Hasher {
+pub struct Sha256Context {
     context: Context,
 }
 
-impl Default for Sha256Hasher {
+impl Default for Sha256Context {
     fn default() -> Self {
-        Sha256Hasher {
+        Sha256Context {
             context: Context::new(&SHA256),
         }
     }
 }
 
-impl fmt::Debug for Sha256Hasher {
+impl fmt::Debug for Sha256Context {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "mt::fun::Sha256Hasher{{context: ring::digest::Context}}")
     }
 }
 
 
-impl MTHashFunction for Sha256Hash {
+impl MTAlgorithm for Sha256 {
     type Value = Sha256Value;
-    type Hasher = Sha256Hasher;
+    type Context = Sha256Context;
 }
 
-impl MTHasher for Sha256Hasher {
+impl MTContext for Sha256Context {
     type Out = Sha256Value;
 
     fn new() -> Self {
-        Sha256Hasher::default()
+        Sha256Context::default()
     }
 
-    fn write(&mut self, msg: &[u8]) {
+    fn update(&mut self, msg: &[u8]) {
         self.context.update(msg)
     }
 
@@ -58,8 +58,8 @@ impl MTValue for Sha256Value {
 
 }
 
-impl MTHashable for Sha256Value {
-    fn hash<H: MTHasher>(&self, state: &mut H) {
-        state.write(self.0.as_ref())
+impl MTHash for Sha256Value {
+    fn hash<H: MTContext>(&self, state: &mut H) {
+        state.update(self.0.as_ref())
     }
 }
