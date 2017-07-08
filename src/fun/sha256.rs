@@ -63,3 +63,23 @@ impl MTHash for Sha256Value {
         state.update(self.0.as_ref())
     }
 }
+
+
+#[cfg(test)]
+mod tests {
+    use abc::MTAlgorithm;
+    use super::Sha256;
+
+    #[test]
+    fn sha256_works() {
+        let result = Sha256::eval_hash(&b"123".as_ref());
+        let as_string = format!("{:?}", result.0);
+        let sample = "SHA256:a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3";
+        assert_eq!(as_string, sample);
+
+        let result = Sha256::eval_hash(&result);
+        let as_string = format!("{:?}", result.0);
+        let sample = "SHA256:5a77d1e9612d350b3734f6282259b7ff0a3f87d62cfef5f35e91a5604c0490a3";
+        assert_eq!(as_string, sample);
+    }
+}
