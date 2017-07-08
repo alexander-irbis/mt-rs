@@ -2,7 +2,9 @@ use std::marker::PhantomData;
 use abc::*;
 
 
+/// Doubles hash
 /// dhash<sha256>(x) -> sha256(sha256(x))
+#[derive(Debug, Default, Clone, Copy)]
 pub struct DoubleHash<H> where H: MTHashFunction {
     marker: PhantomData<H>,
 }
