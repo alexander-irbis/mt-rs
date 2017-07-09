@@ -236,9 +236,9 @@ mod tests {
         assert_eq!(format!("{:?}", tree.tree().get_root().unwrap()), root);
         assert!(tree.check_data().is_ok());
         assert!(tree.check_tree().is_ok());
-//        assert_eq!(tree.audit_proof(0), Some(true));
-//        assert_eq!(tree.audit_proof(1), Some(true));
-//        assert_eq!(tree.audit_proof(2), Some(true));
+        assert_eq!(tree.audit_proof(0), Some(true));
+        assert_eq!(tree.audit_proof(1), Some(true));
+        assert_eq!(tree.audit_proof(2), Some(true));
     }
 
     #[test]
