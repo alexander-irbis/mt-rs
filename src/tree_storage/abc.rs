@@ -1,6 +1,6 @@
 use std::fmt;
 
-use fun::abc::*;
+use abc::*;
 
 
 pub struct TreeLevel<'a, A: TreeStorage + 'a> {
@@ -71,7 +71,8 @@ pub trait TreeStorage: fmt::Debug {
         Item=(&'s <Self::Algorithm as MTAlgorithm>::Value, &'s <Self::Algorithm as MTAlgorithm>::Value)
     > + 's>>;
 
-    fn try_root(&self) -> Option<&<Self::Algorithm as MTAlgorithm>::Value> {
+    /// Returns root, if the tree is not empty
+    fn get_root(&self) -> Option<&<Self::Algorithm as MTAlgorithm>::Value> {
         if self.is_empty() {
             return None;
         }
@@ -80,7 +81,9 @@ pub trait TreeStorage: fmt::Debug {
         self.get_value(last_level, last_index)
     }
 
+    /// Returns root. Panics, if tree is empty.
+    #[deprecated(since="0.1.0", note="please use `get_root` instead")]
     fn root(&self) -> &<Self::Algorithm as MTAlgorithm>::Value {
-        self.try_root().expect("Tree is empty")
+        self.get_root().expect("Tree is empty")
     }
 }

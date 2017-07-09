@@ -108,7 +108,7 @@ impl <A> TreeStorage for MemoryTreeStorage<A> where A: MTAlgorithm {
         })) as Box<Iterator<Item=_>>)
     }
 
-    fn try_root(&self) -> Option<&<Self::Algorithm as MTAlgorithm>::Value> {
+    fn get_root(&self) -> Option<&<Self::Algorithm as MTAlgorithm>::Value> {
         self.layers.iter().last().and_then(|layer| layer.iter().last())
     }
 }
