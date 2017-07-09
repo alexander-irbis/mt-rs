@@ -1,3 +1,6 @@
+use std::fmt;
+
+
 pub trait MTContext {
     type Out: MTValue;
     fn new() -> Self;
@@ -5,11 +8,11 @@ pub trait MTContext {
     fn finish(self) -> Self::Out;
 }
 
-pub trait MTValue: MTHash + Eq {
+pub trait MTValue: MTHash {
     //fn as_bytes(&self) -> &[u8];
 }
 
-pub trait MTHash {
+pub trait MTHash: Eq + Clone + fmt::Debug {
     fn hash<H: MTContext>(&self, state: &mut H);
 
     fn hash_slice<H: MTContext>(data: &[Self], state: &mut H)
