@@ -2,12 +2,12 @@ use abc::*;
 
 
 #[derive(Debug, Default)]
-pub struct MerkleTree<D, T> where D: DataStorage, T: TreeStorage {
+pub struct MerkleTree<D, T> where D: DataStorageReadonly, T: TreeStorage {
     data: D,
     tree: T,
 }
 
-impl <D, T> MerkleTree<D, T> where D: DataStorage, T: TreeStorage {
+impl <D, T> MerkleTree<D, T> where D: DataStorageReadonly, T: TreeStorage {
     /// Creates instance without checking of data integrity
     pub fn new_unchecked(data: D, tree: T) -> Self {
         MerkleTree { data, tree }
@@ -39,51 +39,6 @@ impl <D, T> MerkleTree<D, T> where D: DataStorage, T: TreeStorage {
     #[cfg(test)]
     pub fn tree_mut(&mut self) -> &mut T {
         &mut self.tree
-    }
-
-    /// Appends a new data block at the back of data chain
-    pub fn push(&mut self, data: D::Block) {
-        let hash = T::Algorithm::eval_hash(&data);
-        self.data.push(data).unwrap();
-        self.push_hash(0, hash)
-    }
-
-    // Appends new hash to the level, creating a level if it did not exist
-    fn push_hash(&mut self, level: usize, hash: <T::Algorithm as MTAlgorithm>::Value) {
-        debug_assert!(level <= self.tree.len());
-        if self.tree.len() == level {
-            self.tree.grow();
-        }
-        // FIXME check error
-        self.tree.push(level, hash).unwrap();
-        self.update_branch(level)
-    }
-
-    // Updates last branch after new hash has been added to the level
-    fn update_branch(&mut self, level: usize) {
-        debug_assert!(level < self.tree.len());
-        let layer_is_last = self.tree.len() == level + 1;
-        let len = self.tree.get_level_len(level).unwrap();
-        if len > 1 {
-            let hash = {
-                let layer = &self.tree.get_level(level).unwrap();
-                let pair = if len % 2 == 0 {
-                    (layer.get(len - 2).unwrap(), layer.get(len - 1).unwrap())
-                } else {
-                    (layer.get(len - 1).unwrap(), layer.get(len - 1).unwrap())
-                };
-                T::Algorithm::eval_hash(&pair)
-            };
-            let next_level = level + 1;
-            if layer_is_last || len % 2 == 1 {
-                self.push_hash(next_level, hash);
-            } else {
-                let next_len = self.tree.get_level_len(next_level).unwrap();
-                debug_assert!(next_len > 0);
-                *self.tree.get_value_mut(next_level, next_len - 1).unwrap() = hash;
-                self.update_branch(next_level)
-            }
-        }
     }
 
     /// Rebuilds full tree from scratch, using the current state of the data
@@ -208,18 +163,75 @@ impl <D, T> MerkleTree<D, T> where D: DataStorage, T: TreeStorage {
     }
 }
 
+
+impl <D, T> MerkleTree<D, T> where D: DataStorage, T: TreeStorage {
+    /// Appends a new data block at the back of data chain
+    pub fn push(&mut self, data: D::Block) {
+        if !self.data.is_writeable() {
+            unimplemented!()
+        }
+        let hash = T::Algorithm::eval_hash(&data);
+        self.data.push(data).unwrap();
+        self.push_hash(0, hash)
+    }
+
+    // Appends new hash to the level, creating a level if it did not exist
+    fn push_hash(&mut self, level: usize, hash: <T::Algorithm as MTAlgorithm>::Value) {
+        debug_assert!(level <= self.tree.len());
+        if self.tree.len() == level {
+            self.tree.grow();
+        }
+        // FIXME check error
+        self.tree.push(level, hash).unwrap();
+        self.update_branch(level)
+    }
+
+    // Updates last branch after new hash has been added to the level
+    fn update_branch(&mut self, level: usize) {
+        debug_assert!(level < self.tree.len());
+        let layer_is_last = self.tree.len() == level + 1;
+        let len = self.tree.get_level_len(level).unwrap();
+        if len > 1 {
+            let hash = {
+                let layer = &self.tree.get_level(level).unwrap();
+                let pair = if len % 2 == 0 {
+                    (layer.get(len - 2).unwrap(), layer.get(len - 1).unwrap())
+                } else {
+                    (layer.get(len - 1).unwrap(), layer.get(len - 1).unwrap())
+                };
+                T::Algorithm::eval_hash(&pair)
+            };
+            let next_level = level + 1;
+            if layer_is_last || len % 2 == 1 {
+                self.push_hash(next_level, hash);
+            } else {
+                let next_len = self.tree.get_level_len(next_level).unwrap();
+                debug_assert!(next_len > 0);
+                *self.tree.get_value_mut(next_level, next_len - 1).unwrap() = hash;
+                self.update_branch(next_level)
+            }
+        }
+    }
+}
+
+
 #[cfg(test)]
 mod tests {
     use abc::*;
     use super::MerkleTree;
     use fun::double::DoubleHash;
     use fun::sha256::Sha256;
+    use data_storage::memory::MemoryReadonlyDataStorage;
     use data_storage::memory::MemoryDataStorage;
     use tree_storage::memory::MemoryTreeStorage;
 
     static DATA: [&[u8]; 3] = [b"123", b"321", b"555"];
 
-    fn sample_tree() -> MerkleTree<MemoryDataStorage<&'static [u8]>, MemoryTreeStorage<DoubleHash<Sha256>>> {
+    fn sample_ro_tree() -> MerkleTree<MemoryReadonlyDataStorage<'static, &'static [u8]>, MemoryTreeStorage<DoubleHash<Sha256>>> {
+        MerkleTree::new_and_rebuild(MemoryReadonlyDataStorage::new(&DATA[..]), Default::default())
+    }
+
+    fn sample_rw_tree() -> MerkleTree<MemoryDataStorage<&'static [u8]>, MemoryTreeStorage<DoubleHash<Sha256>>> {
         let mut tree = MerkleTree::default();
         tree.push(DATA[0]);
         tree.push(DATA[1]);
@@ -229,7 +241,7 @@ mod tests {
 
     #[test]
     fn merkle_tree_works() {
-        let tree = sample_tree();
+        let tree = sample_ro_tree();
         // println!("{:?}", tree);
         // println!("{:?}", tree.root());
         let root = "SHA256:895073a7ee449758eec65efa6a9dcf51c41fa7b7a0e01b240c85d7fc230390e8";
@@ -243,15 +255,23 @@ mod tests {
 
     #[test]
     fn merkle_tree_check() {
-        let mut tree = sample_tree();
+        let mut tree = sample_rw_tree();
+        assert!(tree.check_data().is_ok());
+        assert!(tree.check_tree().is_ok());
+        assert_eq!(tree.audit_proof(0), Some(true));
+        assert_eq!(tree.audit_proof(1), Some(true));
+        assert_eq!(tree.audit_proof(2), Some(true));
+
+        // Damage data
         tree.data_mut().data_mut()[1] = b"666";
         assert!(tree.check_data().is_err());
         assert_eq!(tree.audit_proof(0), Some(true));
         assert_eq!(tree.audit_proof(1), Some(false));
         assert_eq!(tree.audit_proof(2), Some(true));
 
-        let mut tree = sample_tree();
+        let mut tree = sample_rw_tree();
         {
+            // Damage tree
             let layers = tree.tree_mut().data_mut();
             layers[0][1] = layers[0][0];
         }
@@ -263,11 +283,20 @@ mod tests {
 
     #[test]
     fn merkle_tree_rebuilds() {
-        let a = sample_tree();
-        let mut b = sample_tree();
+        // a - built step by step
+        // b - built step by step and then rebuilt
+        // c - built from ready data
+
+        let a = sample_rw_tree();
+        let mut b = sample_rw_tree();
         b.rebuild();
+        let c = sample_ro_tree();
+
         // println!("\n TREE a:\n\n{:?}", a);
         // println!("\n TREE b:\n\n{:?}", b);
+        // println!("\n TREE c:\n\n{:?}", c);
+
         assert_eq!(a.tree().get_root().unwrap(), b.tree().get_root().unwrap());
+        assert_eq!(a.tree().get_root().unwrap(), c.tree().get_root().unwrap());
     }
 }
