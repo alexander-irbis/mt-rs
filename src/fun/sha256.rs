@@ -3,7 +3,7 @@ use std::fmt;
 use ring::digest::Context;
 use ring::digest::SHA256;
 
-use abc::*;
+use prelude::*;
 use util::fmt_slice2hex;
 
 

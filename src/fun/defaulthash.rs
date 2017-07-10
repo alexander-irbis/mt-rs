@@ -1,7 +1,7 @@
 use std::hash::Hasher;
 use std::collections::hash_map::DefaultHasher;
 
-use abc::*;
+use prelude::*;
 
 
 #[derive(Debug, Default, Clone, Copy)]

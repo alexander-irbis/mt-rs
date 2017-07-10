@@ -1,5 +1,6 @@
 use std::marker::PhantomData;
-use abc::*;
+
+use prelude::*;
 
 
 /// Doubles hash
