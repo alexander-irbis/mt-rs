@@ -31,8 +31,8 @@ impl <'v, V> DataStorageReadonly for MemoryReadonlyDataStorage<'v, V> where V: D
         Ok(self.data.is_empty())
     }
 
-    fn get(&self, index: usize) -> Result<Option<Self::Block>> {
-        Ok(self.data.get(index).cloned())
+    fn get(&self, index: usize) -> Result<Self::Block> {
+        self.data.get(index).cloned().ok_or(INDEX_IS_OUT_OF_BOUNDS)
     }
 
     fn iter<'s: 'i, 'i>(&'s self) -> Result<Box<Iterator<Item=Result<Self::Block>> + 'i>> {
@@ -91,8 +91,8 @@ impl <V> DataStorageReadonly for MemoryDataStorage<V> where V: DataBlock {
         Ok(self.data.is_empty())
     }
 
-    fn get(&self, index: usize) -> Result<Option<Self::Block>> {
-        Ok(self.data.get(index).cloned())
+    fn get(&self, index: usize) -> Result<Self::Block> {
+        self.data.get(index).cloned().ok_or(INDEX_IS_OUT_OF_BOUNDS)
     }
 
     fn iter<'s: 'i, 'i>(&'s self) -> Result<Box<Iterator<Item=Result<Self::Block>> + 'i>> {

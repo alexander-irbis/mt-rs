@@ -12,10 +12,10 @@ pub trait DataStorageReadonly: fmt::Debug {
     fn is_empty(&self) -> Result<bool> {
         self.len().map(|len| len == 0)
     }
-    fn get(&self, index: usize) -> Result<Option<Self::Block>>;
+    fn get(&self, index: usize) -> Result<Self::Block>;
     fn iter<'s: 'i, 'i>(&'s self) -> Result<Box<Iterator<Item=Result<Self::Block>> + 'i>> {
         Ok(Box::new((0 .. self.len()?)
-            .map( move |index| self.get(index).map(Option::unwrap) )
+            .map( move |index| self.get(index) )
         ))
     }
     fn range<'s: 'i, 'i>(&'s self, from: usize, to: usize) -> Result<Box<Iterator<Item=Result<Self::Block>> + 'i>> {
@@ -29,7 +29,7 @@ pub trait DataStorageReadonly: fmt::Debug {
             panic!("`from` ({}) greater then `to` ({})", from, to);
         }
         Ok(Box::new((from .. to)
-            .map( move |index| self.get(index).map(Option::unwrap) )
+            .map( move |index| self.get(index) )
         ))
     }
 

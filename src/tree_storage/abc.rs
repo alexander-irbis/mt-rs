@@ -18,7 +18,7 @@ impl<'a, A: TreeStorage + 'a> TreeLevel<'a, A> {
         self.len == 0
     }
 
-    pub fn get(&self, index: usize) -> Result<Option<<A::Algorithm as MTAlgorithm>::Value>> {
+    pub fn get(&self, index: usize) -> Result<<A::Algorithm as MTAlgorithm>::Value> {
         self.tree.get_value(self.level, index)
     }
 }
@@ -47,18 +47,18 @@ pub trait TreeStorage: fmt::Debug {
     fn grow(&mut self) -> Result<()>;
 
     /// Returns an info about the specified level, if the level exists
-    fn get_level(&self, level: usize) -> Result<Option<TreeLevel<Self>>> where Self: Sized {
-        self.get_level_len(level).map(|len| len.map(|len| TreeLevel { len, level, tree: self }))
+    fn get_level(&self, level: usize) -> Result<TreeLevel<Self>> where Self: Sized {
+        self.get_level_len(level).map(|len| TreeLevel { len, level, tree: self })
     }
 
     /// Returns a width of the specified level, if the level exists
-    fn get_level_len(&self, level: usize) -> Result<Option<usize>>;
+    fn get_level_len(&self, level: usize) -> Result<usize>;
 
     /// Returns a value
-    fn get_value(&self, level: usize, index: usize) -> Result<Option<<Self::Algorithm as MTAlgorithm>::Value>>;
+    fn get_value(&self, level: usize, index: usize) -> Result<<Self::Algorithm as MTAlgorithm>::Value>;
 
     /// Returns a mutable reference
-    fn get_value_mut(&mut self, level: usize, index: usize) -> Result<Option<&mut <Self::Algorithm as MTAlgorithm>::Value>>;
+    fn get_value_mut(&mut self, level: usize, index: usize) -> Result<&mut <Self::Algorithm as MTAlgorithm>::Value>;
 
     /// Appends a value to the back of the specified level
     fn push(&mut self, level: usize, value: <Self::Algorithm as MTAlgorithm>::Value) -> Result<()>;
@@ -68,11 +68,11 @@ pub trait TreeStorage: fmt::Debug {
 
     fn extend_from_slice(&mut self, level: usize, slice: &[<Self::Algorithm as MTAlgorithm>::Value]) -> Result<()>;
 
-    fn iter_level<'s>(&'s self, level: usize) -> Result<Option<Box<Iterator<Item=Result<<Self::Algorithm as MTAlgorithm>::Value>> + 's>>>;
+    fn iter_level<'s>(&'s self, level: usize) -> Result<Box<Iterator<Item=Result<<Self::Algorithm as MTAlgorithm>::Value>> + 's>>;
 
-    fn iter_level_by_pair<'s>(&'s self, level: usize) -> Result<Option<Box<Iterator<
+    fn iter_level_by_pair<'s>(&'s self, level: usize) -> Result<Box<Iterator<
         Item=Result<(<Self::Algorithm as MTAlgorithm>::Value, <Self::Algorithm as MTAlgorithm>::Value)>
-    > + 's>>>;
+    > + 's>>;
 
     /// Returns root, if the tree is not empty
     fn get_root(&self) -> Result<Option<<Self::Algorithm as MTAlgorithm>::Value>> {
@@ -80,8 +80,8 @@ pub trait TreeStorage: fmt::Debug {
             return Ok(None);
         }
         let last_level = self.len()? - 1;
-        let last_index = self.get_level_len(last_level)?.unwrap() - 1;
-        self.get_value(last_level, last_index)
+        let last_index = self.get_level_len(last_level)? - 1;
+        self.get_value(last_level, last_index).map(Some)
     }
 
     /// Returns root. Panics, if tree is empty.

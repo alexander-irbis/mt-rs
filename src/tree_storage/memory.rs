@@ -64,16 +64,22 @@ impl <A> TreeStorage for MemoryTreeStorage<A> where A: MTAlgorithm {
         Ok(())
     }
 
-    fn get_level_len(&self, level: usize) -> Result<Option<usize>> {
-        Ok(self.layers.get(level).map(Vec::len))
+    fn get_level_len(&self, level: usize) -> Result<usize> {
+        self.layers.get(level)
+            .map(Vec::len)
+            .ok_or(INDEX_IS_OUT_OF_BOUNDS)
     }
 
-    fn get_value(&self, level: usize, index: usize) -> Result<Option<<Self::Algorithm as MTAlgorithm>::Value>> {
-        Ok(self.layers.get(level).and_then(|layer| layer.get(index).cloned()))
+    fn get_value(&self, level: usize, index: usize) -> Result<<Self::Algorithm as MTAlgorithm>::Value> {
+        self.layers.get(level)
+            .and_then(|layer| layer.get(index).cloned())
+            .ok_or(INDEX_IS_OUT_OF_BOUNDS)
     }
 
-    fn get_value_mut(&mut self, level: usize, index: usize) -> Result<Option<&mut <Self::Algorithm as MTAlgorithm>::Value>> {
-        Ok(self.layers.get_mut(level).and_then(|layer| layer.get_mut(index)))
+    fn get_value_mut(&mut self, level: usize, index: usize) -> Result<&mut <Self::Algorithm as MTAlgorithm>::Value> {
+        self.layers.get_mut(level)
+            .and_then(|layer| layer.get_mut(index))
+            .ok_or(INDEX_IS_OUT_OF_BOUNDS)
     }
 
     fn push(&mut self, level: usize, value: <Self::Algorithm as MTAlgorithm>::Value) -> Result<()> {
@@ -96,17 +102,21 @@ impl <A> TreeStorage for MemoryTreeStorage<A> where A: MTAlgorithm {
         Ok(())
     }
 
-    fn iter_level<'s>(&'s self, level: usize) -> Result<Option<Box<Iterator<Item=Result<<Self::Algorithm as MTAlgorithm>::Value>> + 's>>> {
-        Ok(self.layers.get(level).map(|layer| Box::new(layer.iter().cloned().map(Ok)) as Box<Iterator<Item=_>>))
+    fn iter_level<'s>(&'s self, level: usize) -> Result<Box<Iterator<Item=Result<<Self::Algorithm as MTAlgorithm>::Value>> + 's>> {
+        self.layers.get(level)
+            .map(|layer| Box::new(layer.iter().cloned().map(Ok)) as Box<Iterator<Item=_>>)
+            .ok_or(INDEX_IS_OUT_OF_BOUNDS)
     }
 
-    fn iter_level_by_pair<'s>(&'s self, level: usize) -> Result<Option<Box<Iterator<
+    fn iter_level_by_pair<'s>(&'s self, level: usize) -> Result<Box<Iterator<
         Item=Result<(<Self::Algorithm as MTAlgorithm>::Value, <Self::Algorithm as MTAlgorithm>::Value)>
-    > + 's>>> {
-        Ok(self.layers.get(level).map(|layer| Box::new(layer.chunks(2).map(|chunk| {
-            let i2 = (chunk.len() + 1) % 2;
-            Ok((chunk[0].clone(), chunk[i2].clone()))
-        })) as Box<Iterator<Item=_>>))
+    > + 's>> {
+        self.layers.get(level)
+            .map(|layer| Box::new(layer.chunks(2).map(|chunk| {
+                let i2 = (chunk.len() + 1) % 2;
+                Ok((chunk[0].clone(), chunk[i2].clone()))
+            })) as Box<Iterator<Item=_>>)
+            .ok_or(INDEX_IS_OUT_OF_BOUNDS)
     }
 
     fn get_root(&self) -> Result<Option<<Self::Algorithm as MTAlgorithm>::Value>> {

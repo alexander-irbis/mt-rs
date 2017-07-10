@@ -1,8 +1,6 @@
 use std::fmt;
 use std::io;
 
-use prelude::*;
-
 
 #[derive(Debug)]
 pub enum StateError {
@@ -70,6 +68,12 @@ impl AccessError {
 
 
 pub type Result<T> = ::std::result::Result<T, Error>;
+
+
+// -------------------------------------------------------------------------------------------------
+
+
+pub const INDEX_IS_OUT_OF_BOUNDS: Error = Error::Access(AccessError::IndexIsOutOfBounds);
 
 
 #[derive(Debug)]
@@ -173,6 +177,20 @@ impl Error {
         match self {
             Error::Access(err) => Some(err),
             _ => None,
+        }
+    }
+}
+
+pub trait MTErrorExt<T> {
+    fn iob_is_ok(self) -> Result<Option<T>>;
+}
+
+impl <T> MTErrorExt<T> for Result<T> {
+    fn iob_is_ok(self) -> Result<Option<T>> {
+        match self {
+            Ok(val) => Ok(Some(val)),
+            Err(Error::Access(AccessError::IndexIsOutOfBounds)) => Ok(None),
+            Err(err) => Err(err),
         }
     }
 }

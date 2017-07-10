@@ -109,14 +109,14 @@ impl DataStorageReadonly for ChunkedFile {
         Ok(self.size == 0)
     }
 
-    fn get(&self, index: usize) -> Result<Option<Self::Block>> {
+    fn get(&self, index: usize) -> Result<Self::Block> {
         let offset = index as u64 * 4096;
         if offset >= self.size {
-            return Ok(None);
+            Err(INDEX_IS_OUT_OF_BOUNDS)?;
         }
         let mut fd = self.fd.borrow_mut();
         fd.seek(SeekFrom::Start(offset))?;
-        Ok(Some(Chunk4096::from_stream(&mut *fd)?))
+        Ok(Chunk4096::from_stream(&mut *fd)?)
     }
 }
 

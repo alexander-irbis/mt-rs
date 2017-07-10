@@ -73,7 +73,7 @@ impl <D, T> MerkleTree<D, T> where D: DataStorageReadonly, T: TreeStorage {
 
         for level in 0 .. sizes.len() - 1 {
             layer_buffer.clear();
-            for chunk in self.tree.iter_level_by_pair(level)?.unwrap() {
+            for chunk in self.tree.iter_level_by_pair(level)? {
                 let hash = T::Algorithm::eval_hash(&chunk?);
                 layer_buffer.push(hash);
             }
@@ -90,12 +90,12 @@ impl <D, T> MerkleTree<D, T> where D: DataStorageReadonly, T: TreeStorage {
             return Ok(());
         } else if self.data.is_empty()? || self.tree.is_empty()? {
             Err(StateError::InconsistentState)?;
-        } else if self.data.len()? != self.tree.get_level_len(0)?.unwrap() {
+        } else if self.data.len()? != self.tree.get_level_len(0)? {
             Err(StateError::InconsistentState)?;
         }
         // FIXME stop on fail
         if self.data.iter()?
-            .zip(self.tree.iter_level(0)?.unwrap())
+            .zip(self.tree.iter_level(0)?)
             .map(|(block, cs)| { Ok(T::Algorithm::eval_hash(&block?) != cs?) })
             .fold(Ok(false), |acc: Result<_>, item: Result<_>| Ok(acc? || item?) )?
         {
@@ -109,18 +109,18 @@ impl <D, T> MerkleTree<D, T> where D: DataStorageReadonly, T: TreeStorage {
     pub fn check_tree(&self) -> Result<()> {
         if self.tree.is_empty()? {
             return Ok(());
-        } else if self.tree.len()? == 1 && self.tree.get_level_len(0)?.unwrap() == 1 {
+        } else if self.tree.len()? == 1 && self.tree.get_level_len(0)? == 1 {
             return Ok(());
         }
         for level in 0 .. self.tree.len()? - 1 {
-            let source_len = self.tree.get_level_len(level)?.unwrap();
-            if self.tree.get_level_len(level + 1)?.unwrap() != source_len / 2 + source_len % 2 {
+            let source_len = self.tree.get_level_len(level)?;
+            if self.tree.get_level_len(level + 1)? != source_len / 2 + source_len % 2 {
                 Err(StateError::InconsistentState)?;
             }
         }
         for level in (0 .. self.tree.len()? - 1).rev() {
-            let source = self.tree.iter_level_by_pair(level)?.unwrap();
-            let derived = self.tree.iter_level(level + 1)?.unwrap();
+            let source = self.tree.iter_level_by_pair(level)?;
+            let derived = self.tree.iter_level(level + 1)?;
             for (chunk, cs) in source.zip(derived) {
                 if T::Algorithm::eval_hash(&chunk?) != cs? {
                     Err(StateError::DataDoesNotMatchTheChecksum)?;
@@ -131,36 +131,31 @@ impl <D, T> MerkleTree<D, T> where D: DataStorageReadonly, T: TreeStorage {
     }
 
     /// Checks the proof for a chain from a data block to the root
-    pub fn audit_proof(&self, mut index: usize) -> Result<Option<bool>> {
-        let data_hash = self.data.get(index)?
-            .map(|block| T::Algorithm::eval_hash(&block));
-        if data_hash.is_none() {
-            return Ok(None);
-        }
-        let mut hash = self.tree.get_value(0, index)?.unwrap();
-        let data_hash = data_hash.unwrap();
+    pub fn audit_proof(&self, mut index: usize) -> Result<bool> {
+        let data_hash = T::Algorithm::eval_hash(&self.data.get(index)?);
+        let mut hash = self.tree.get_value(0, index)?;
         if hash != data_hash {
-            return Ok(Some(false));
+            return Ok(false);
         }
         for level in 0 .. self.tree.len()? - 1 {
             //let source = self.tree.get_value(level, index).unwrap();
             let index2 = index + (index + 1) % 2 - index % 2;
-            let hash2 = self.tree.get_value(level, index2)?;
+            let hash2 = self.tree.get_value(level, index2).iob_is_ok()?;
             let pair = match index < index2 {
-                false => (hash2.unwrap(), hash),
+                false => (hash2.ok_or(INDEX_IS_OUT_OF_BOUNDS)?, hash),
                 true => {
                     let hash2 = hash2.unwrap_or_else(|| hash.clone());
                     (hash, hash2)
                 },
             };
             index /= 2;
-            hash = self.tree.get_value(level + 1, index)?.unwrap();
+            hash = self.tree.get_value(level + 1, index)?;
             let pair_hash = T::Algorithm::eval_hash(&pair);
             if hash != pair_hash {
-                return Ok(Some(false));
+                return Ok(false);
             }
         }
-        Ok(Some(true))
+        Ok(true)
     }
 }
 
@@ -192,26 +187,24 @@ impl <D, T> MerkleTree<D, T> where D: DataStorage, T: TreeStorage {
     fn update_branch(&mut self, level: usize) -> Result<()> {
         debug_assert!(level < self.tree.len()?);
         let layer_is_last = self.tree.len()? == level + 1;
-        let len = self.tree.get_level_len(level)?.unwrap();
-        if len <= 1 {
+        let len = self.tree.get_level_len(level)?;
+        debug_assert!(len > 0);
+        if len == 1 {
             return Ok(());
         }
         let hash = {
-            let layer = &self.tree.get_level(level)?.unwrap();
+            let layer = &self.tree.get_level(level)?;
             let last = len - 1;
-            let pair = (
-                layer.get(last - last % 2)?.unwrap(),
-                layer.get(last)?.unwrap()
-            );
+            let pair = ( layer.get(last - last % 2)?, layer.get(last)? );
             T::Algorithm::eval_hash(&pair)
         };
         let next_level = level + 1;
         if layer_is_last || len % 2 == 1 {
             self.push_hash(next_level, hash)
         } else {
-            let next_len = self.tree.get_level_len(next_level)?.unwrap();
+            let next_len = self.tree.get_level_len(next_level)?;
             debug_assert!(next_len > 0);
-            *self.tree.get_value_mut(next_level, next_len - 1)?.unwrap() = hash;
+            *self.tree.get_value_mut(next_level, next_len - 1)? = hash;
             self.update_branch(next_level)
         }
     }
@@ -251,9 +244,9 @@ mod tests {
         assert_eq!(format!("{:?}", tree.tree().get_root().unwrap().unwrap()), root);
         assert!(tree.check_data().is_ok());
         assert!(tree.check_tree().is_ok());
-        assert_eq!(tree.audit_proof(0).unwrap(), Some(true));
-        assert_eq!(tree.audit_proof(1).unwrap(), Some(true));
-        assert_eq!(tree.audit_proof(2).unwrap(), Some(true));
+        assert_eq!(tree.audit_proof(0).unwrap(), true);
+        assert_eq!(tree.audit_proof(1).unwrap(), true);
+        assert_eq!(tree.audit_proof(2).unwrap(), true);
     }
 
     #[test]
@@ -261,16 +254,16 @@ mod tests {
         let mut tree = sample_rw_tree();
         assert!(tree.check_data().is_ok());
         assert!(tree.check_tree().is_ok());
-        assert_eq!(tree.audit_proof(0).unwrap(), Some(true));
-        assert_eq!(tree.audit_proof(1).unwrap(), Some(true));
-        assert_eq!(tree.audit_proof(2).unwrap(), Some(true));
+        assert_eq!(tree.audit_proof(0).unwrap(), true);
+        assert_eq!(tree.audit_proof(1).unwrap(), true);
+        assert_eq!(tree.audit_proof(2).unwrap(), true);
 
         // Damage data
         tree.data_mut().data_mut()[1] = b"666";
         assert!(tree.check_data().is_err());
-        assert_eq!(tree.audit_proof(0).unwrap(), Some(true));
-        assert_eq!(tree.audit_proof(1).unwrap(), Some(false));
-        assert_eq!(tree.audit_proof(2).unwrap(), Some(true));
+        assert_eq!(tree.audit_proof(0).unwrap(), true);
+        assert_eq!(tree.audit_proof(1).unwrap(), false);
+        assert_eq!(tree.audit_proof(2).unwrap(), true);
 
         let mut tree = sample_rw_tree();
         {
@@ -279,9 +272,9 @@ mod tests {
             layers[0][1] = layers[0][0];
         }
         assert!(tree.check_tree().is_err());
-        assert_eq!(tree.audit_proof(0).unwrap(), Some(false));
-        assert_eq!(tree.audit_proof(1).unwrap(), Some(false));
-        assert_eq!(tree.audit_proof(2).unwrap(), Some(true));
+        assert_eq!(tree.audit_proof(0).unwrap(), false);
+        assert_eq!(tree.audit_proof(1).unwrap(), false);
+        assert_eq!(tree.audit_proof(2).unwrap(), true);
     }
 
     #[test]
@@ -299,7 +292,7 @@ mod tests {
         // println!("\n TREE b:\n\n{:?}", b);
         // println!("\n TREE c:\n\n{:?}", c);
 
-        assert_eq!(a.tree().get_root().unwrap().unwrap(), b.tree().get_root().unwrap().unwrap());
-        assert_eq!(a.tree().get_root().unwrap().unwrap(), c.tree().get_root().unwrap().unwrap());
+        assert_eq!(a.tree().get_root().unwrap(), b.tree().get_root().unwrap());
+        assert_eq!(a.tree().get_root().unwrap(), c.tree().get_root().unwrap());
     }
 }
