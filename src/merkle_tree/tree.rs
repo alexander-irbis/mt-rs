@@ -161,12 +161,18 @@ impl <D, T> MerkleTree<D, T> where D: DataStorageReadonly, T: TreeStorage {
 
 
 impl <D, T> MerkleTree<D, T> where D: DataStorage, T: TreeStorage {
+    fn check_if_data_is_writable(&self) -> Result<()> {
+        if self.data.is_writeable() {
+            Ok(())
+        } else {
+            Err(Error::new_ro("Data storage is not writable"))
+        }
+    }
+
     /// Appends a new data block at the back of data chain
     pub fn push(&mut self, data: D::Block) -> Result<()> {
-        if !self.data.is_writeable() {
-            // FIXME error
-            unimplemented!()
-        }
+        // TODO ensure that tree storage is writable
+        self.check_if_data_is_writable()?;
         let hash = T::Algorithm::eval_hash(&data);
         self.data.push(data).unwrap();
         self.push_hash(0, hash)
@@ -178,8 +184,7 @@ impl <D, T> MerkleTree<D, T> where D: DataStorage, T: TreeStorage {
         if self.tree.len()? == level {
             self.tree.grow()?;
         }
-        // FIXME check error
-        self.tree.push(level, hash).unwrap();
+        self.tree.push(level, hash)?;
         self.update_branch(level)
     }
 

@@ -1,5 +1,6 @@
 use std::borrow::Cow;
 use std::fmt;
+use std::ops;
 
 use prelude::*;
 
@@ -39,8 +40,9 @@ impl <'v, V> DataStorageReadonly for MemoryReadonlyDataStorage<'v, V> where V: D
         Ok(Box::new(self.data.iter().cloned().map(Ok)))
     }
 
-    fn range<'s: 'i, 'i>(&'s self, from: usize, to: usize) -> Result<Box<Iterator<Item=Result<Self::Block>> + 'i>> {
-        Ok(Box::new(self.data[from..to].iter().cloned().map(Ok)))
+    fn range<'s: 'i, 'i>(&'s self, range: ops::Range<usize>) -> Result<Box<Iterator<Item=Result<Self::Block>> + 'i>> {
+        self.check_range(&range)?;
+        Ok(Box::new(self.data[range].iter().cloned().map(Ok)))
     }
 }
 
@@ -99,8 +101,9 @@ impl <V> DataStorageReadonly for MemoryDataStorage<V> where V: DataBlock {
         Ok(Box::new(self.data.iter().cloned().map(Ok)))
     }
 
-    fn range<'s: 'i, 'i>(&'s self, from: usize, to: usize) -> Result<Box<Iterator<Item=Result<Self::Block>> + 'i>> {
-        Ok(Box::new(self.data[from..to].iter().cloned().map(Ok)))
+    fn range<'s: 'i, 'i>(&'s self, range: ops::Range<usize>) -> Result<Box<Iterator<Item=Result<Self::Block>> + 'i>> {
+        self.check_range(&range)?;
+        Ok(Box::new(self.data[range].iter().cloned().map(Ok)))
     }
 
     fn is_writeable(&self) -> bool {
