@@ -87,6 +87,7 @@ impl ChunkedFile {
         Ok(ChunkedFile { fd, size })
     }
 
+    #[allow(dead_code)]
     pub fn open<P: AsRef<Path>>(path: P) -> io::Result<Self> {
         ChunkedFile::new(File::open(path)?)
     }
@@ -119,35 +120,3 @@ impl DataStorageReadonly for ChunkedFile {
         Ok(Chunk4096::from_stream(&mut *fd)?)
     }
 }
-
-
-// -------------------------------------------------------------------------------------------------
-
-
-//#[cfg(test)]
-//mod tests {
-//    use abc::*;
-//    use super::MemoryDataStorage;
-//    use super::MemoryReadonlyDataStorage;
-//
-//    static DATA: [&[u8]; 3] = [b"123", b"321", b"555"];
-//
-//    #[test]
-//    fn memory_data_storage_ro_rw_mode() {
-//        let mut ds = MemoryDataStorage::default();
-//        assert!(ds.push(&b"123"[..]).is_ok());
-//        ds.set_writable(false);
-//        assert!(ds.push(&b"123"[..]).is_err());
-//        ds.set_writable(true);
-//        assert!(ds.push(&b"123"[..]).is_ok());
-//        assert!(ds.len() == 2);
-//    }
-//
-//    #[test]
-//    fn memory_readonly_data_storage() {
-//        let data: [&[u8]; 3] = [DATA[0], DATA[1], DATA[2]];
-//        let ds = MemoryReadonlyDataStorage::new(&data[..]);
-//        assert!(ds.len() == 3);
-//        assert!(!ds.is_writeable());
-//    }
-//}
