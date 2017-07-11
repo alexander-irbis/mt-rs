@@ -93,13 +93,10 @@ impl <D, T> MerkleTree<D, T> where D: DataStorageReadonly, T: TreeStorage {
         } else if self.data.len()? != self.tree.get_level_len(0)? {
             Err(StateError::InconsistentState)?;
         }
-        // FIXME stop on fail
-        if self.data.iter()?
-            .zip(self.tree.iter_level(0)?)
-            .map(|(block, cs)| { Ok(T::Algorithm::eval_hash(&block?) != cs?) })
-            .fold(Ok(false), |acc: Result<_>, item: Result<_>| Ok(acc? || item?) )?
-        {
-            Err(StateError::DataDoesNotMatchTheChecksum)?;
+        for (block, cs) in self.data.iter()?.zip(self.tree.iter_level(0)?) {
+            if T::Algorithm::eval_hash(&block?) != cs? {
+                Err(StateError::DataDoesNotMatchTheChecksum)?;
+            }
         }
         Ok(())
     }
