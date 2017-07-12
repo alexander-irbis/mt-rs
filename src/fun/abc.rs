@@ -1,17 +1,16 @@
 use std::fmt;
 
 
+/// Represents a state of hashing
 pub trait MTContext {
-    type Out: MTValue;
+    type Out: MTHash;
     fn new() -> Self;
     fn update(&mut self, msg: &[u8]);
     fn finish(self) -> Self::Out;
 }
 
-pub trait MTValue: MTHash {
-    //fn as_bytes(&self) -> &[u8];
-}
-
+/// Represants a hashable value
+/// (hashes should be hashable too)
 pub trait MTHash: Eq + Clone + fmt::Debug {
     fn hash<H: MTContext>(&self, state: &mut H);
 
@@ -24,8 +23,9 @@ pub trait MTHash: Eq + Clone + fmt::Debug {
     }
 }
 
+/// Represents a hashing algorithm
 pub trait MTAlgorithm {
-    type Value: MTValue;
+    type Value: MTHash;
     type Context: MTContext<Out=Self::Value>;
 
     fn eval_hash<H>(data: &H) -> Self::Value where H: MTHash {
@@ -33,8 +33,6 @@ pub trait MTAlgorithm {
         data.hash(&mut context);
         context.finish()
     }
-
-    //fn hash<D: Hashable>(data: D) -> Self;
 }
 
 

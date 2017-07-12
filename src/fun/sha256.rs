@@ -64,10 +64,6 @@ impl MTContext for Sha256Context {
     }
 }
 
-impl MTValue for Sha256Value {
-
-}
-
 impl MTHash for Sha256Value {
     fn hash<H: MTContext>(&self, state: &mut H) {
         state.update(self.0.as_ref())

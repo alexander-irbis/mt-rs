@@ -6,15 +6,23 @@ use prelude::*;
 
 /// Static data (for example, on read-only media).
 /// Can only be checked
+/// Any tree storage backend should implement this trait
 pub trait DataStorageReadonly: fmt::Debug {
-    type Block: DataBlock;
+    type DataValue: MTHash;
 
+    /// Returns the length of the collection
     fn len(&self) -> Result<usize>;
+
+    /// Returns true if collection is empty
     fn is_empty(&self) -> Result<bool> {
         self.len().map(|len| len == 0)
     }
-    fn get(&self, index: usize) -> Result<Self::Block>;
-    fn iter<'s: 'i, 'i>(&'s self) -> Result<Box<Iterator<Item=Result<Self::Block>> + 'i>> {
+
+    /// Returns an item at index, or error, if index out of bounds
+    fn get(&self, index: usize) -> Result<Self::DataValue>;
+
+    /// Return an iterator over all elements in collection
+    fn iter<'s: 'i, 'i>(&'s self) -> Result<Box<Iterator<Item=Result<Self::DataValue>> + 'i>> {
         Ok(Box::new((0 .. self.len()?)
             .map( move |index| self.get(index) )
         ))
@@ -54,7 +62,7 @@ pub trait DataStorageReadonly: fmt::Debug {
     }
 
     /// Creates an iterator over range (or slice)
-    fn range<'s: 'i, 'i, R: Into<ops::Range<usize>>>(&'s self, range: R) -> Result<Box<Iterator<Item=Result<Self::Block>> + 'i>> {
+    fn range<'s: 'i, 'i, R: Into<ops::Range<usize>>>(&'s self, range: R) -> Result<Box<Iterator<Item=Result<Self::DataValue>> + 'i>> {
         let range = range.into();
         self.check_range(&range)?;
         Ok(Box::new(range.map(move |index| self.get(index) )))
@@ -67,16 +75,14 @@ pub trait DataStorageReadonly: fmt::Debug {
 }
 
 
+/// Any writable tree storage backend should implement this trait
 pub trait DataStorage: DataStorageReadonly {
-    fn push(&mut self, data: Self::Block) -> Result<()>;
-    fn extend<DD: IntoIterator<Item=Result<Self::Block>>>(&mut self, data: DD) -> Result<()>;
+    /// Appends an item to the back of the collection
+    fn push(&mut self, data: Self::DataValue) -> Result<()>;
+
+    /// Appends items to the back of the collection
+    fn extend<DD: IntoIterator<Item=Result<Self::DataValue>>>(&mut self, data: DD) -> Result<()>;
+
     /// Clears all data
     fn clear(&mut self) -> Result<()>;
 }
-
-pub trait DataBlock: MTHash {
-
-}
-
-// FIXME stub
-impl <T> DataBlock for T where T: MTHash {}

@@ -2,18 +2,18 @@ use prelude::*;
 
 
 #[derive(Debug)]
-pub struct MerkleTreeSimple<D, A> where A: MTAlgorithm, D: DataBlock {
+pub struct MerkleTreeSimple<D, A> where A: MTAlgorithm, D: MTHash {
     data: Vec<D>,
     tree: Vec<Vec<A::Value>>,
 }
 
-impl <A, D> Default for MerkleTreeSimple<D, A> where A: MTAlgorithm, D: DataBlock {
+impl <A, D> Default for MerkleTreeSimple<D, A> where A: MTAlgorithm, D: MTHash {
     fn default() -> Self {
         MerkleTreeSimple::new()
     }
 }
 
-impl <A, D> MerkleTreeSimple<D, A> where A: MTAlgorithm, D: DataBlock {
+impl <A, D> MerkleTreeSimple<D, A> where A: MTAlgorithm, D: MTHash {
     /// Creates an empty instance
     pub fn new() -> Self {
         MerkleTreeSimple { data: Vec::new(), tree: Default::default() }
@@ -211,7 +211,7 @@ impl <A, D> MerkleTreeSimple<D, A> where A: MTAlgorithm, D: DataBlock {
     }
 
     /// Appends a new data block at the back of data chain
-    pub fn push_bulk<DD: IntoIterator<Item=D>>(&mut self, data: DD) {
+    pub fn extend<DD: IntoIterator<Item=D>>(&mut self, data: DD) {
         let len = self.data.len();
         self.data.extend(data.into_iter());
         if self.data.len() - len == 0 {
@@ -221,7 +221,7 @@ impl <A, D> MerkleTreeSimple<D, A> where A: MTAlgorithm, D: DataBlock {
         self.push_hashes_bulk(0, hashes)
     }
 
-    // Appends new hash to the level, creating a level if it did not exist
+    // Appends new hashes to the level, creating a level if it did not exist
     fn push_hashes_bulk<VV: IntoIterator<Item=A::Value>>(&mut self, level: usize, hashes: VV) {
         debug_assert!(level <= self.tree.len());
         if self.tree.len() == level {
@@ -232,7 +232,7 @@ impl <A, D> MerkleTreeSimple<D, A> where A: MTAlgorithm, D: DataBlock {
         self.update_branch_bulk(level, len, true)
     }
 
-    // Updates last branch after new hash has been added to the level
+    // Updates changed branches after new hashes has been added to the level
     fn update_branch_bulk(&mut self, level: usize, from: usize, pushed: bool) {
         debug_assert!(level < self.tree.len());
         let len = self.tree[level].len();
@@ -259,7 +259,7 @@ impl <A, D> MerkleTreeSimple<D, A> where A: MTAlgorithm, D: DataBlock {
         self.update_branch_bulk(next_level, from / 2, false)
     }
 
-    /// Returns root, if the tree is not empty
+    /// Returns the root hash, or None if tree is empty.
     pub fn get_root(&self) -> Option<&A::Value> {
         if self.tree.is_empty() {
             return None;
@@ -302,23 +302,23 @@ mod tests {
 
         let mut b = sample_rw_tree();
         b.clear();
-        b.push_bulk([DATA[0], DATA[1], DATA[2]].into_iter().cloned());
+        b.extend([DATA[0], DATA[1], DATA[2]].into_iter().cloned());
         assert_eq!(a.get_root().unwrap(), b.get_root().unwrap());
 
         b.clear();
-        b.push_bulk([DATA[0], DATA[1]].into_iter().cloned());
-        b.push_bulk([DATA[2]].into_iter().cloned());
+        b.extend([DATA[0], DATA[1]].into_iter().cloned());
+        b.extend([DATA[2]].into_iter().cloned());
         assert_eq!(a.get_root().unwrap(), b.get_root().unwrap());
 
         b.clear();
-        b.push_bulk([DATA[0]].into_iter().cloned());
-        b.push_bulk([DATA[1], DATA[2]].into_iter().cloned());
+        b.extend([DATA[0]].into_iter().cloned());
+        b.extend([DATA[1], DATA[2]].into_iter().cloned());
         assert_eq!(a.get_root().unwrap(), b.get_root().unwrap());
 
         b.clear();
-        b.push_bulk([DATA[0]].into_iter().cloned());
-        b.push_bulk([DATA[1]].into_iter().cloned());
-        b.push_bulk([DATA[2]].into_iter().cloned());
+        b.extend([DATA[0]].into_iter().cloned());
+        b.extend([DATA[1]].into_iter().cloned());
+        b.extend([DATA[2]].into_iter().cloned());
         assert_eq!(a.get_root().unwrap(), b.get_root().unwrap());
 
         b.clear();

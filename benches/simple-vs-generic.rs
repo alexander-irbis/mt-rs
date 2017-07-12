@@ -52,7 +52,7 @@ macro_rules! bulk_generic_readonly {
             let data = make_data($n);
             b.iter(|| {
                 let mt: MerkleTree<MemoryReadonlyDataStorage<Chunk4096>, MemoryTreeStorage<Type>>;
-                mt = MerkleTree::new_and_rebuild(MemoryReadonlyDataStorage::new(data.clone()), Default::default()).unwrap();
+                mt = MerkleTree::new_and_rebuild(MemoryReadonlyDataStorage::with_data(data.clone()), Default::default()).unwrap();
                 test::black_box(mt);
             });
         }
@@ -119,7 +119,7 @@ macro_rules! step_bulk_generic {
                     let mut mt: MerkleTree<MemoryDataStorage<Chunk4096>, MemoryTreeStorage<Type>>;
                     mt = MerkleTree::default();
                     for x in data.chunks($e) {
-                        mt.push_bulk(x.iter().cloned().map(Ok)).unwrap();
+                        mt.extend(x.iter().cloned().map(Ok)).unwrap();
                     }
                     test::black_box(mt);
                 });
@@ -132,7 +132,7 @@ macro_rules! step_bulk_generic {
                     let mut mt: MerkleTreeSimple<Chunk4096, Type>;
                     mt = MerkleTreeSimple::default();
                     for x in data.chunks($e) {
-                        mt.push_bulk(x.iter().cloned());
+                        mt.extend(x.iter().cloned());
                     }
                     test::black_box(mt);
                 });

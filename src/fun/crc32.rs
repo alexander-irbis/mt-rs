@@ -179,10 +179,6 @@ impl fmt::Debug for Crc32Value {
     }
 }
 
-impl MTValue for Crc32Value {
-
-}
-
 impl MTHash for Crc32Value {
     fn hash<H: MTContext>(&self, state: &mut H) {
         state.update(self.0.as_ref())

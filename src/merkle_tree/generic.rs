@@ -164,6 +164,7 @@ impl <D, T> MerkleTree<D, T> where D: DataStorageReadonly, T: TreeStorage {
         Ok(true)
     }
 
+    /// Returns the root hash, or None if tree is empty.
     pub fn get_root(&self) -> Result<Option<<T::Algorithm as MTAlgorithm>::Value>> {
         self.tree.get_root()
     }
@@ -186,7 +187,7 @@ impl <D, T> MerkleTree<D, T> where D: DataStorage, T: TreeStorage {
     }
 
     /// Appends a new data block at the back of data chain
-    pub fn push(&mut self, data: D::Block) -> Result<()> {
+    pub fn push(&mut self, data: D::DataValue) -> Result<()> {
         // TODO ensure that tree storage is writable
         self.check_if_data_is_writable()?;
         let hash = T::Algorithm::eval_hash(&data);
@@ -231,7 +232,7 @@ impl <D, T> MerkleTree<D, T> where D: DataStorage, T: TreeStorage {
     }
 
     /// Appends a new data block at the back of data chain
-    pub fn push_bulk<DD: IntoIterator<Item=Result<D::Block>>>(&mut self, data: DD) -> Result<()> {
+    pub fn extend<DD: IntoIterator<Item=Result<D::DataValue>>>(&mut self, data: DD) -> Result<()> {
         let len = self.data.len()?;
         self.data.extend(data.into_iter())?;
         let new_len = self.data.len()?;
@@ -244,7 +245,7 @@ impl <D, T> MerkleTree<D, T> where D: DataStorage, T: TreeStorage {
         self.push_hashes_bulk(0, hashes)
     }
 
-    // Appends new hash to the level, creating a level if it did not exist
+    // Appends new hashes to the level, creating a level if it did not exist
     fn push_hashes_bulk<VV: IntoIterator<Item=Result<<T::Algorithm as MTAlgorithm>::Value>>>(&mut self, level: usize, hashes: VV) -> Result<()> {
         debug_assert!(level <= self.tree.len()?);
         if self.tree.len()? == level {
@@ -255,7 +256,7 @@ impl <D, T> MerkleTree<D, T> where D: DataStorage, T: TreeStorage {
         self.update_branch_bulk(level, len, true)
     }
 
-    // Updates last branch after new hash has been added to the level
+    // Updates changed branches after new hashes has been added to the level
     fn update_branch_bulk(&mut self, level: usize, from: usize, pushed: bool) -> Result<()> {
         debug_assert!(level < self.tree.len()?);
         let len = self.tree.get_level_len(level)?;
@@ -297,7 +298,7 @@ mod tests {
     static DATA: [&[u8]; 3] = [b"123", b"321", b"555"];
 
     fn sample_ro_tree() -> MerkleTree<MemoryReadonlyDataStorage<'static, &'static [u8]>, MemoryTreeStorage<DoubleHash<Sha256>>> {
-        MerkleTree::new_and_rebuild(MemoryReadonlyDataStorage::new(&DATA[..]), Default::default()).unwrap()
+        MerkleTree::new_and_rebuild(MemoryReadonlyDataStorage::with_data(&DATA[..]), Default::default()).unwrap()
     }
 
     fn sample_rw_tree() -> MerkleTree<MemoryDataStorage<&'static [u8]>, MemoryTreeStorage<DoubleHash<Sha256>>> {
@@ -323,23 +324,23 @@ mod tests {
 
         let mut b = sample_rw_tree();
         b.clear().unwrap();
-        b.push_bulk([DATA[0], DATA[1], DATA[2]].into_iter().cloned().map(Ok)).unwrap();
+        b.extend([DATA[0], DATA[1], DATA[2]].into_iter().cloned().map(Ok)).unwrap();
         assert_eq!(a.get_root().unwrap(), b.get_root().unwrap());
 
         b.clear().unwrap();
-        b.push_bulk([DATA[0], DATA[1]].into_iter().cloned().map(Ok)).unwrap();
-        b.push_bulk([DATA[2]].into_iter().cloned().map(Ok)).unwrap();
+        b.extend([DATA[0], DATA[1]].into_iter().cloned().map(Ok)).unwrap();
+        b.extend([DATA[2]].into_iter().cloned().map(Ok)).unwrap();
         assert_eq!(a.get_root().unwrap(), b.get_root().unwrap());
 
         b.clear().unwrap();
-        b.push_bulk([DATA[0]].into_iter().cloned().map(Ok)).unwrap();
-        b.push_bulk([DATA[1], DATA[2]].into_iter().cloned().map(Ok)).unwrap();
+        b.extend([DATA[0]].into_iter().cloned().map(Ok)).unwrap();
+        b.extend([DATA[1], DATA[2]].into_iter().cloned().map(Ok)).unwrap();
         assert_eq!(a.get_root().unwrap(), b.get_root().unwrap());
 
         b.clear().unwrap();
-        b.push_bulk([DATA[0]].into_iter().cloned().map(Ok)).unwrap();
-        b.push_bulk([DATA[1]].into_iter().cloned().map(Ok)).unwrap();
-        b.push_bulk([DATA[2]].into_iter().cloned().map(Ok)).unwrap();
+        b.extend([DATA[0]].into_iter().cloned().map(Ok)).unwrap();
+        b.extend([DATA[1]].into_iter().cloned().map(Ok)).unwrap();
+        b.extend([DATA[2]].into_iter().cloned().map(Ok)).unwrap();
         assert_eq!(a.get_root().unwrap(), b.get_root().unwrap());
 
         b.clear().unwrap();

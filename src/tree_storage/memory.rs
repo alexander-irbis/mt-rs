@@ -2,7 +2,7 @@ use std::fmt;
 
 use prelude::*;
 
-
+/// An inmemory storage for a tree of hashes
 pub struct MemoryTreeStorage<A> where A: MTAlgorithm {
     // Hashes are stored as layers
     // In the begin (index 0) is the bottom level 0 with hashes of the data

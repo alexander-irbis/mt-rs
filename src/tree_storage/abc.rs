@@ -10,20 +10,26 @@ pub struct TreeLevel<'a, A: TreeStorage + 'a> {
 }
 
 impl<'a, A: TreeStorage + 'a> TreeLevel<'a, A> {
+
+    /// Returns the number of values on the level
     pub fn len(&self) -> usize {
         self.len
     }
 
+    /// Returns true if level is empty
+    /// (but the level never should be empty)
     pub fn is_empty(&self) -> bool {
         self.len == 0
     }
 
+    /// Return a value from the level of tree, or error is index out of bounds
     pub fn get(&self, index: usize) -> Result<<A::Algorithm as MTAlgorithm>::Value> {
         self.tree.get_value(self.level, index)
     }
 }
 
 
+/// Any tree storage backend should implement this trait
 pub trait TreeStorage: fmt::Debug {
     type Algorithm: MTAlgorithm;
 
@@ -63,13 +69,17 @@ pub trait TreeStorage: fmt::Debug {
     /// Appends a value to the back of the specified level
     fn push(&mut self, level: usize, value: <Self::Algorithm as MTAlgorithm>::Value) -> Result<()>;
 
+    /// Appends values to the back of the specified level
     fn extend<I>(&mut self, level: usize, other: I) -> Result<()>
         where I: IntoIterator<Item=Result<<Self::Algorithm as MTAlgorithm>::Value>>;
 
+    /// Appends values to the back of the specified level
     fn extend_from_slice(&mut self, level: usize, slice: &[<Self::Algorithm as MTAlgorithm>::Value]) -> Result<()>;
 
+    /// Return an iterator over all values of the specified level
     fn iter_level<'s>(&'s self, level: usize) -> Result<Box<Iterator<Item=Result<<Self::Algorithm as MTAlgorithm>::Value>> + 's>>;
 
+    /// Return an iterator over pairs of values of the specified level
     fn iter_level_by_pair<'s>(&'s self, level: usize) -> Result<Box<Iterator<
         Item=Result<(<Self::Algorithm as MTAlgorithm>::Value, <Self::Algorithm as MTAlgorithm>::Value)>
     > + 's>>;

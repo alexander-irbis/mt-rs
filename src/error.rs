@@ -181,11 +181,11 @@ impl Error {
     }
 }
 
-pub trait MTErrorExt<T> {
+pub trait MTResultExt<T> {
     fn iob_is_ok(self) -> Result<Option<T>>;
 }
 
-impl <T> MTErrorExt<T> for Result<T> {
+impl <T> MTResultExt<T> for Result<T> {
     fn iob_is_ok(self) -> Result<Option<T>> {
         match self {
             Ok(val) => Ok(Some(val)),

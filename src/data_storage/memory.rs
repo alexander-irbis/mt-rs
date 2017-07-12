@@ -5,24 +5,27 @@ use std::ops;
 use prelude::*;
 
 
-pub struct MemoryReadonlyDataStorage<'v, V> where V: DataBlock + 'v {
+/// An inmemory storage for data values
+/// May be just a reference to the real data storage
+pub struct MemoryReadonlyDataStorage<'v, V> where V: MTHash + 'v {
     data: Cow<'v, [V]>,
 }
 
-impl <'v, V> MemoryReadonlyDataStorage<'v, V> where V: DataBlock + 'v {
-    pub fn new<D: Into<Cow<'v, [V]>>>(data: D) -> Self {
+impl <'v, V> MemoryReadonlyDataStorage<'v, V> where V: MTHash + 'v {
+    /// Creates an instance, representing `data`
+    pub fn with_data<D: Into<Cow<'v, [V]>>>(data: D) -> Self {
         MemoryReadonlyDataStorage { data: data.into() }
     }
 }
 
-impl <'v, V> fmt::Debug for MemoryReadonlyDataStorage<'v, V> where V: DataBlock + 'v {
+impl <'v, V> fmt::Debug for MemoryReadonlyDataStorage<'v, V> where V: MTHash + 'v {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "MemoryDataStorage(len={})", self.len().map_err(|_| fmt::Error)?)
     }
 }
 
-impl <'v, V> DataStorageReadonly for MemoryReadonlyDataStorage<'v, V> where V: DataBlock + 'v {
-    type Block = V;
+impl <'v, V> DataStorageReadonly for MemoryReadonlyDataStorage<'v, V> where V: MTHash + 'v {
+    type DataValue = V;
 
     fn len(&self) -> Result<usize> {
         Ok(self.data.len())
@@ -32,15 +35,15 @@ impl <'v, V> DataStorageReadonly for MemoryReadonlyDataStorage<'v, V> where V: D
         Ok(self.data.is_empty())
     }
 
-    fn get(&self, index: usize) -> Result<Self::Block> {
+    fn get(&self, index: usize) -> Result<Self::DataValue> {
         self.data.get(index).cloned().ok_or(INDEX_IS_OUT_OF_BOUNDS)
     }
 
-    fn iter<'s: 'i, 'i>(&'s self) -> Result<Box<Iterator<Item=Result<Self::Block>> + 'i>> {
+    fn iter<'s: 'i, 'i>(&'s self) -> Result<Box<Iterator<Item=Result<Self::DataValue>> + 'i>> {
         Ok(Box::new(self.data.iter().cloned().map(Ok)))
     }
 
-    fn range<'s: 'i, 'i, R: Into<ops::Range<usize>>>(&'s self, range: R) -> Result<Box<Iterator<Item=Result<Self::Block>> + 'i>> {
+    fn range<'s: 'i, 'i, R: Into<ops::Range<usize>>>(&'s self, range: R) -> Result<Box<Iterator<Item=Result<Self::DataValue>> + 'i>> {
         let range = range.into();
         self.check_range(&range)?;
         Ok(Box::new(self.data[range].iter().cloned().map(Ok)))
@@ -48,18 +51,20 @@ impl <'v, V> DataStorageReadonly for MemoryReadonlyDataStorage<'v, V> where V: D
 }
 
 
-pub struct MemoryDataStorage<V> where V: DataBlock {
+/// A writable inmemory data storage
+pub struct MemoryDataStorage<V> where V: MTHash {
     data: Vec<V>,
     is_writable: bool,
 }
 
-impl <V> Default for MemoryDataStorage<V> where V: DataBlock {
+impl <V> Default for MemoryDataStorage<V> where V: MTHash {
     fn default() -> Self {
         MemoryDataStorage::new()
     }
 }
 
-impl<V> MemoryDataStorage<V> where V: DataBlock {
+impl<V> MemoryDataStorage<V> where V: MTHash {
+    /// Creates a new empty instance
     pub fn new() -> Self {
         MemoryDataStorage {
             data: Vec::new(),
@@ -67,6 +72,7 @@ impl<V> MemoryDataStorage<V> where V: DataBlock {
         }
     }
 
+    /// Creates an instance, filled with `data`
     pub fn with_data<VV: Into<Vec<V>>>(data: VV) -> Self {
         MemoryDataStorage {
             data: data.into(),
@@ -74,24 +80,26 @@ impl<V> MemoryDataStorage<V> where V: DataBlock {
         }
     }
 
+    /// sets whether data storage can accept new values
     pub fn set_writable(&mut self, is_writable: bool) {
         self.is_writable = is_writable;
     }
 
+    /// For testing purposes only
     #[cfg(test)]
     pub fn data_mut(&mut self) -> &mut Vec<V> {
         &mut self.data
     }
 }
 
-impl <V> fmt::Debug for MemoryDataStorage<V> where V: DataBlock {
+impl <V> fmt::Debug for MemoryDataStorage<V> where V: MTHash {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "MemoryDataStorage(len={})", self.data.len())
     }
 }
 
-impl <V> DataStorageReadonly for MemoryDataStorage<V> where V: DataBlock {
-    type Block = V;
+impl <V> DataStorageReadonly for MemoryDataStorage<V> where V: MTHash {
+    type DataValue = V;
 
     fn len(&self) -> Result<usize> {
         Ok(self.data.len())
@@ -101,15 +109,15 @@ impl <V> DataStorageReadonly for MemoryDataStorage<V> where V: DataBlock {
         Ok(self.data.is_empty())
     }
 
-    fn get(&self, index: usize) -> Result<Self::Block> {
+    fn get(&self, index: usize) -> Result<Self::DataValue> {
         self.data.get(index).cloned().ok_or(INDEX_IS_OUT_OF_BOUNDS)
     }
 
-    fn iter<'s: 'i, 'i>(&'s self) -> Result<Box<Iterator<Item=Result<Self::Block>> + 'i>> {
+    fn iter<'s: 'i, 'i>(&'s self) -> Result<Box<Iterator<Item=Result<Self::DataValue>> + 'i>> {
         Ok(Box::new(self.data.iter().cloned().map(Ok)))
     }
 
-    fn range<'s: 'i, 'i, R: Into<ops::Range<usize>>>(&'s self, range: R) -> Result<Box<Iterator<Item=Result<Self::Block>> + 'i>> {
+    fn range<'s: 'i, 'i, R: Into<ops::Range<usize>>>(&'s self, range: R) -> Result<Box<Iterator<Item=Result<Self::DataValue>> + 'i>> {
         let range = range.into();
         self.check_range(&range)?;
         Ok(Box::new(self.data[range].iter().cloned().map(Ok)))
@@ -120,13 +128,13 @@ impl <V> DataStorageReadonly for MemoryDataStorage<V> where V: DataBlock {
     }
 }
 
-impl <V> DataStorage for MemoryDataStorage<V> where V: DataBlock {
+impl <V> DataStorage for MemoryDataStorage<V> where V: MTHash {
     /// Clears all data
     fn clear(&mut self) -> Result<()> {
         Ok(self.data.clear())
     }
 
-    fn push(&mut self, data: Self::Block) -> Result<()> {
+    fn push(&mut self, data: Self::DataValue) -> Result<()> {
         if self.is_writeable() {
             self.data.push(data);
             Ok(())
@@ -135,7 +143,7 @@ impl <V> DataStorage for MemoryDataStorage<V> where V: DataBlock {
         }
     }
 
-    fn extend<DD: IntoIterator<Item=Result<Self::Block>>>(&mut self, data: DD) -> Result<()> {
+    fn extend<DD: IntoIterator<Item=Result<Self::DataValue>>>(&mut self, data: DD) -> Result<()> {
         for v in data.into_iter() {
             self.data.push(v?);
         }
@@ -166,7 +174,7 @@ mod tests {
     #[test]
     fn memory_readonly_data_storage() {
         let data: [&[u8]; 3] = [DATA[0], DATA[1], DATA[2]];
-        let ds = MemoryReadonlyDataStorage::new(&data[..]);
+        let ds = MemoryReadonlyDataStorage::with_data(&data[..]);
         assert!(ds.len().unwrap() == 3);
         assert!(!ds.is_writeable());
     }

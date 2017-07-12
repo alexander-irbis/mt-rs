@@ -37,10 +37,6 @@ impl MTContext for DefaultHashContext {
     }
 }
 
-impl MTValue for DefaultHashValue {
-
-}
-
 impl MTHash for DefaultHashValue {
     fn hash<H: MTContext>(&self, state: &mut H) {
         let buf: [u8; 8] = unsafe {

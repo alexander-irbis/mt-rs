@@ -45,7 +45,7 @@ fn n_x_0004_bulk_crc32_ieee(b: &mut Bencher) {
     let data: Vec<&'static [u8]> = DATA_1000_X4.iter().map(|v| &v[..]).collect();
     b.iter(move || {
         let mt: MerkleTree<MemoryReadonlyDataStorage<&'static [u8]>, MemoryTreeStorage<Crc32Ieee>>;
-        mt = MerkleTree::new_and_rebuild(MemoryReadonlyDataStorage::new(data.as_slice()), Default::default()).unwrap();
+        mt = MerkleTree::new_and_rebuild(MemoryReadonlyDataStorage::with_data(data.as_slice()), Default::default()).unwrap();
         test::black_box(mt);
     });
 }
@@ -69,7 +69,7 @@ fn n_x_0004_bulk_crc32_castagnoli(b: &mut Bencher) {
     let data: Vec<&'static [u8]> = DATA_1000_X4.iter().map(|v| &v[..]).collect();
     b.iter(move || {
         let mt: MerkleTree<MemoryReadonlyDataStorage<&'static [u8]>, MemoryTreeStorage<Crc32Castagnoli>>;
-        mt = MerkleTree::new_and_rebuild(MemoryReadonlyDataStorage::new(data.as_slice()), Default::default()).unwrap();
+        mt = MerkleTree::new_and_rebuild(MemoryReadonlyDataStorage::with_data(data.as_slice()), Default::default()).unwrap();
         test::black_box(mt);
     });
 }
@@ -93,7 +93,7 @@ fn n_x_0004_bulk_crc32_koopman(b: &mut Bencher) {
     let data: Vec<&'static [u8]> = DATA_1000_X4.iter().map(|v| &v[..]).collect();
     b.iter(move || {
         let mt: MerkleTree<MemoryReadonlyDataStorage<&'static [u8]>, MemoryTreeStorage<Crc32Koopman>>;
-        mt = MerkleTree::new_and_rebuild(MemoryReadonlyDataStorage::new(data.as_slice()), Default::default()).unwrap();
+        mt = MerkleTree::new_and_rebuild(MemoryReadonlyDataStorage::with_data(data.as_slice()), Default::default()).unwrap();
         test::black_box(mt);
     });
 }
@@ -117,7 +117,7 @@ fn n_x_0004_bulk_sha256(b: &mut Bencher) {
     let data: Vec<&'static [u8]> = DATA_1000_X4.iter().map(|v| &v[..]).collect();
     b.iter(move || {
         let mt: MerkleTree<MemoryReadonlyDataStorage<&'static [u8]>, MemoryTreeStorage<Sha256>>;
-        mt = MerkleTree::new_and_rebuild(MemoryReadonlyDataStorage::new(data.as_slice()), Default::default()).unwrap();
+        mt = MerkleTree::new_and_rebuild(MemoryReadonlyDataStorage::with_data(data.as_slice()), Default::default()).unwrap();
         test::black_box(mt);
     });
 }
@@ -141,7 +141,7 @@ fn n_x_0004_bulk_sha256_double(b: &mut Bencher) {
     let data: Vec<&'static [u8]> = DATA_1000_X4.iter().map(|v| &v[..]).collect();
     b.iter(|| {
         let mt: MerkleTree<MemoryReadonlyDataStorage<&'static [u8]>, MemoryTreeStorage<DoubleHash<Sha256>>>;
-        mt = MerkleTree::new_and_rebuild(MemoryReadonlyDataStorage::new(data.as_slice()), Default::default()).unwrap();
+        mt = MerkleTree::new_and_rebuild(MemoryReadonlyDataStorage::with_data(data.as_slice()), Default::default()).unwrap();
         test::black_box(mt);
     });
 }
@@ -165,7 +165,7 @@ fn n_x_0004_bulk_rust_siphash(b: &mut Bencher) {
     let data: Vec<&'static [u8]> = DATA_1000_X4.iter().map(|v| &v[..]).collect();
     b.iter(move || {
         let mt: MerkleTree<MemoryReadonlyDataStorage<&'static [u8]>, MemoryTreeStorage<DefaultHash>>;
-        mt = MerkleTree::new_and_rebuild(MemoryReadonlyDataStorage::new(data.as_slice()), Default::default()).unwrap();
+        mt = MerkleTree::new_and_rebuild(MemoryReadonlyDataStorage::with_data(data.as_slice()), Default::default()).unwrap();
         test::black_box(mt);
     });
 }
@@ -189,7 +189,7 @@ fn n_x_0004_bulk_rust_siphash_double(b: &mut Bencher) {
     let data: Vec<&'static [u8]> = DATA_1000_X4.iter().map(|v| &v[..]).collect();
     b.iter(|| {
         let mt: MerkleTree<MemoryReadonlyDataStorage<&'static [u8]>, MemoryTreeStorage<DoubleHash<DefaultHash>>>;
-        mt = MerkleTree::new_and_rebuild(MemoryReadonlyDataStorage::new(data.as_slice()), Default::default()).unwrap();
+        mt = MerkleTree::new_and_rebuild(MemoryReadonlyDataStorage::with_data(data.as_slice()), Default::default()).unwrap();
         test::black_box(mt);
     });
 }
@@ -217,7 +217,7 @@ fn n_x_4096_bulk_crc32_ieee(b: &mut Bencher) {
     let data: Vec<&'static [u8]> = DATA_1000_X4096.iter().map(|v| &v[..]).collect();
     b.iter(move || {
         let mt: MerkleTree<MemoryReadonlyDataStorage<&'static [u8]>, MemoryTreeStorage<Crc32Ieee>>;
-        mt = MerkleTree::new_and_rebuild(MemoryReadonlyDataStorage::new(data.as_slice()), Default::default()).unwrap();
+        mt = MerkleTree::new_and_rebuild(MemoryReadonlyDataStorage::with_data(data.as_slice()), Default::default()).unwrap();
         test::black_box(mt);
     });
 }
@@ -241,7 +241,7 @@ fn n_x_4096_bulk_crc32_castagnoli(b: &mut Bencher) {
     let data: Vec<&'static [u8]> = DATA_1000_X4096.iter().map(|v| &v[..]).collect();
     b.iter(move || {
         let mt: MerkleTree<MemoryReadonlyDataStorage<&'static [u8]>, MemoryTreeStorage<Crc32Castagnoli>>;
-        mt = MerkleTree::new_and_rebuild(MemoryReadonlyDataStorage::new(data.as_slice()), Default::default()).unwrap();
+        mt = MerkleTree::new_and_rebuild(MemoryReadonlyDataStorage::with_data(data.as_slice()), Default::default()).unwrap();
         test::black_box(mt);
     });
 }
@@ -265,7 +265,7 @@ fn n_x_4096_bulk_crc32_koopman(b: &mut Bencher) {
     let data: Vec<&'static [u8]> = DATA_1000_X4096.iter().map(|v| &v[..]).collect();
     b.iter(move || {
         let mt: MerkleTree<MemoryReadonlyDataStorage<&'static [u8]>, MemoryTreeStorage<Crc32Koopman>>;
-        mt = MerkleTree::new_and_rebuild(MemoryReadonlyDataStorage::new(data.as_slice()), Default::default()).unwrap();
+        mt = MerkleTree::new_and_rebuild(MemoryReadonlyDataStorage::with_data(data.as_slice()), Default::default()).unwrap();
         test::black_box(mt);
     });
 }
@@ -289,7 +289,7 @@ fn n_x_4096_bulk_sha256(b: &mut Bencher) {
     let data: Vec<&'static [u8]> = DATA_1000_X4096.iter().map(|v| &v[..]).collect();
     b.iter(move || {
         let mt: MerkleTree<MemoryReadonlyDataStorage<&'static [u8]>, MemoryTreeStorage<Sha256>>;
-        mt = MerkleTree::new_and_rebuild(MemoryReadonlyDataStorage::new(data.as_slice()), Default::default()).unwrap();
+        mt = MerkleTree::new_and_rebuild(MemoryReadonlyDataStorage::with_data(data.as_slice()), Default::default()).unwrap();
         test::black_box(mt);
     });
 }
@@ -313,7 +313,7 @@ fn n_x_4096_bulk_sha256_double(b: &mut Bencher) {
     let data: Vec<&'static [u8]> = DATA_1000_X4096.iter().map(|v| &v[..]).collect();
     b.iter(|| {
         let mt: MerkleTree<MemoryReadonlyDataStorage<&'static [u8]>, MemoryTreeStorage<DoubleHash<Sha256>>>;
-        mt = MerkleTree::new_and_rebuild(MemoryReadonlyDataStorage::new(data.as_slice()), Default::default()).unwrap();
+        mt = MerkleTree::new_and_rebuild(MemoryReadonlyDataStorage::with_data(data.as_slice()), Default::default()).unwrap();
         test::black_box(mt);
     });
 }
@@ -337,7 +337,7 @@ fn n_x_4096_bulk_rust_siphash(b: &mut Bencher) {
     let data: Vec<&'static [u8]> = DATA_1000_X4096.iter().map(|v| &v[..]).collect();
     b.iter(move || {
         let mt: MerkleTree<MemoryReadonlyDataStorage<&'static [u8]>, MemoryTreeStorage<DefaultHash>>;
-        mt = MerkleTree::new_and_rebuild(MemoryReadonlyDataStorage::new(data.as_slice()), Default::default()).unwrap();
+        mt = MerkleTree::new_and_rebuild(MemoryReadonlyDataStorage::with_data(data.as_slice()), Default::default()).unwrap();
         test::black_box(mt);
     });
 }
@@ -361,7 +361,7 @@ fn n_x_4096_bulk_rust_siphash_double(b: &mut Bencher) {
     let data: Vec<&'static [u8]> = DATA_1000_X4096.iter().map(|v| &v[..]).collect();
     b.iter(|| {
         let mt: MerkleTree<MemoryReadonlyDataStorage<&'static [u8]>, MemoryTreeStorage<DoubleHash<DefaultHash>>>;
-        mt = MerkleTree::new_and_rebuild(MemoryReadonlyDataStorage::new(data.as_slice()), Default::default()).unwrap();
+        mt = MerkleTree::new_and_rebuild(MemoryReadonlyDataStorage::with_data(data.as_slice()), Default::default()).unwrap();
         test::black_box(mt);
     });
 }
