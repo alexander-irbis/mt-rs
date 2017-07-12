@@ -136,18 +136,10 @@ impl <V> DataStorage for MemoryDataStorage<V> where V: DataBlock {
     }
 
     fn extend<DD: IntoIterator<Item=Result<Self::Block>>>(&mut self, data: DD) -> Result<()> {
-        const BUF_SIZE: usize = 16;
-        let mut data = data.into_iter();
-        let mut buf = Vec::with_capacity(BUF_SIZE);
-        loop {
-            for v in data.by_ref().take(BUF_SIZE) {
-                buf.push(v?);
-            }
-            if buf.is_empty() {
-                break Ok(());
-            }
-            self.data.extend(buf.drain(..));
+        for v in data.into_iter() {
+            self.data.push(v?);
         }
+        Ok(())
     }
 }
 
