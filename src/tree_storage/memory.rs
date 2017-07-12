@@ -89,10 +89,22 @@ impl <A> TreeStorage for MemoryTreeStorage<A> where A: MTAlgorithm {
     }
 
     fn extend<I>(&mut self, level: usize, other: I) -> Result<()>
-        where I: IntoIterator<Item=<Self::Algorithm as MTAlgorithm>::Value>
+        where I: IntoIterator<Item=Result<<Self::Algorithm as MTAlgorithm>::Value>>
     {
+        const BUF_SIZE: usize = 64;
+        let mut other = other.into_iter();
+        let mut buf = Vec::with_capacity(BUF_SIZE);
         let layer = self.layers.get_mut(level).ok_or(StateError::InconsistentState)?;
-        layer.extend(other);
+        loop {
+            for v in other.by_ref().take(BUF_SIZE) {
+                buf.push(v?);
+            }
+            if buf.is_empty() {
+                break;
+            }
+            layer.extend(buf.drain(..));
+        }
+
         Ok(())
     }
 

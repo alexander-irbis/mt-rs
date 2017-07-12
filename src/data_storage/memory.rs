@@ -40,7 +40,8 @@ impl <'v, V> DataStorageReadonly for MemoryReadonlyDataStorage<'v, V> where V: D
         Ok(Box::new(self.data.iter().cloned().map(Ok)))
     }
 
-    fn range<'s: 'i, 'i>(&'s self, range: ops::Range<usize>) -> Result<Box<Iterator<Item=Result<Self::Block>> + 'i>> {
+    fn range<'s: 'i, 'i, R: Into<ops::Range<usize>>>(&'s self, range: R) -> Result<Box<Iterator<Item=Result<Self::Block>> + 'i>> {
+        let range = range.into();
         self.check_range(&range)?;
         Ok(Box::new(self.data[range].iter().cloned().map(Ok)))
     }
@@ -108,7 +109,8 @@ impl <V> DataStorageReadonly for MemoryDataStorage<V> where V: DataBlock {
         Ok(Box::new(self.data.iter().cloned().map(Ok)))
     }
 
-    fn range<'s: 'i, 'i>(&'s self, range: ops::Range<usize>) -> Result<Box<Iterator<Item=Result<Self::Block>> + 'i>> {
+    fn range<'s: 'i, 'i, R: Into<ops::Range<usize>>>(&'s self, range: R) -> Result<Box<Iterator<Item=Result<Self::Block>> + 'i>> {
+        let range = range.into();
         self.check_range(&range)?;
         Ok(Box::new(self.data[range].iter().cloned().map(Ok)))
     }
@@ -119,12 +121,32 @@ impl <V> DataStorageReadonly for MemoryDataStorage<V> where V: DataBlock {
 }
 
 impl <V> DataStorage for MemoryDataStorage<V> where V: DataBlock {
+    /// Clears all data
+    fn clear(&mut self) -> Result<()> {
+        Ok(self.data.clear())
+    }
+
     fn push(&mut self, data: Self::Block) -> Result<()> {
         if self.is_writeable() {
             self.data.push(data);
             Ok(())
         } else {
             Err(Error::new_ro("The data storage is in read-only mode"))
+        }
+    }
+
+    fn extend<DD: IntoIterator<Item=Result<Self::Block>>>(&mut self, data: DD) -> Result<()> {
+        const BUF_SIZE: usize = 16;
+        let mut data = data.into_iter();
+        let mut buf = Vec::with_capacity(BUF_SIZE);
+        loop {
+            for v in data.by_ref().take(BUF_SIZE) {
+                buf.push(v?);
+            }
+            if buf.is_empty() {
+                break Ok(());
+            }
+            self.data.extend(buf.drain(..));
         }
     }
 }

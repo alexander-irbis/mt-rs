@@ -7,6 +7,7 @@ authors = ["Alexander Irbis <irbis.labs@gmail.com>"]
 
 [dependencies]
 ring = "0.11"
+crc = "1.4"
 
 [dev-dependencies]
 tempfile = "*"

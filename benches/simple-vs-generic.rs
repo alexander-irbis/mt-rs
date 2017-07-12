@@ -1,7 +1,5 @@
 #![feature(test)]
 
-#[macro_use]
-extern crate lazy_static;
 extern crate mt;
 extern crate test;
 
@@ -17,177 +15,181 @@ use mt::fun::defaulthash::DefaultHash;
 use mt::fun::sha256::Sha256;
 
 
-static N: u32 = 10000;
+mod data_chunk;
+use data_chunk::Chunk4096;
 
-lazy_static! {
-    static ref DATA_1000_X4096: Vec<[u8; 4096]> = (0..N)
+
+fn make_data(n: u32) -> Vec<Chunk4096> {
+    (0..n)
         .map(|x| {
-            let mut data = [0u8; 4096];
-            for (y, v) in data.iter_mut().enumerate() {
+            let mut data = Chunk4096::new();
+            for (y, v) in data.0.iter_mut().enumerate() {
                 *v = x as u8 ^ y as u8;
             }
             data
         })
-        .collect();
+        .collect()
 }
 
-
-#[bench]
-fn n_x_4096_bulk_crc32_generic(b: &mut Bencher) {
-    let data: Vec<&'static [u8]> = DATA_1000_X4096.iter().map(|v| &v[..]).collect();
-    b.iter(move || {
-        let mt: MerkleTree<MemoryDataStorage<&'static [u8]>, MemoryTreeStorage<Crc32Ieee>>;
-        mt = MerkleTree::new_and_rebuild(MemoryDataStorage::with_data(data.clone()), Default::default()).unwrap();
-        test::black_box(mt);
-    });
-}
-
-
-#[bench]
-fn n_x_4096_bulk_crc32_simple(b: &mut Bencher) {
-    let data: Vec<&'static [u8]> = DATA_1000_X4096.iter().map(|v| &v[..]).collect();
-    b.iter(move || {
-        let mt: MerkleTreeSimple<&'static [u8], Crc32Ieee>;
-        mt = MerkleTreeSimple::new_and_rebuild(data.clone());
-        test::black_box(mt);
-    });
-}
-
-
-#[bench] #[ignore]
-fn n_x_4096_step_by_step_crc32_generic(b: &mut Bencher) {
-    b.iter(|| {
-        let mut mt: MerkleTree<MemoryDataStorage<&'static [u8]>, MemoryTreeStorage<Crc32Ieee>>;
-        mt = MerkleTree::default();
-        for x in DATA_1000_X4096.iter() {
-            mt.push(x.as_ref()).unwrap();
+macro_rules! bulk_generic {
+    ($n: expr) => {
+        #[bench]
+        fn bulk_generic(b: &mut Bencher) {
+            let data = make_data($n);
+            b.iter(|| {
+                let mt: MerkleTree<MemoryDataStorage<Chunk4096>, MemoryTreeStorage<Type>>;
+                mt = MerkleTree::new_and_rebuild(MemoryDataStorage::with_data(data.clone()), Default::default()).unwrap();
+                test::black_box(mt);
+            });
         }
-        test::black_box(mt);
-    });
+    };
 }
 
-
-#[bench] #[ignore]
-fn n_x_4096_step_by_step_crc32_simple(b: &mut Bencher) {
-    b.iter(|| {
-        let mut mt: MerkleTreeSimple<&'static [u8], Crc32Ieee>;
-        mt = MerkleTreeSimple::default();
-        for x in DATA_1000_X4096.iter() {
-            mt.push(x.as_ref());
+macro_rules! bulk_generic_readonly {
+    ($n: expr) => {
+        #[bench]
+        fn bulk_generic_readonly(b: &mut Bencher) {
+            let data = make_data($n);
+            b.iter(|| {
+                let mt: MerkleTree<MemoryReadonlyDataStorage<Chunk4096>, MemoryTreeStorage<Type>>;
+                mt = MerkleTree::new_and_rebuild(MemoryReadonlyDataStorage::new(data.clone()), Default::default()).unwrap();
+                test::black_box(mt);
+            });
         }
-        test::black_box(mt);
-    });
+    };
 }
 
-
-// -------------------------------------------------------------------------------------------------
-
-
-#[bench]
-fn n_x_4096_bulk_sha256_generic(b: &mut Bencher) {
-    let data: Vec<&'static [u8]> = DATA_1000_X4096.iter().map(|v| &v[..]).collect();
-    b.iter(move || {
-        let mt: MerkleTree<MemoryDataStorage<&'static [u8]>, MemoryTreeStorage<Sha256>>;
-        mt = MerkleTree::new_and_rebuild(MemoryDataStorage::with_data(data.clone()), Default::default()).unwrap();
-        test::black_box(mt);
-    });
-}
-
-
-#[bench]
-fn n_x_4096_bulk_sha256_simple(b: &mut Bencher) {
-    let data: Vec<&'static [u8]> = DATA_1000_X4096.iter().map(|v| &v[..]).collect();
-    b.iter(move || {
-        let mt: MerkleTreeSimple<&'static [u8], Sha256>;
-        mt = MerkleTreeSimple::new_and_rebuild(data.clone());
-        test::black_box(mt);
-    });
-}
-
-
-#[bench] #[ignore]
-fn n_x_4096_step_by_step_sha256_generic(b: &mut Bencher) {
-    b.iter(|| {
-        let mut mt: MerkleTree<MemoryDataStorage<&'static [u8]>, MemoryTreeStorage<Sha256>>;
-        mt = MerkleTree::default();
-        for x in DATA_1000_X4096.iter() {
-            mt.push(x.as_ref()).unwrap();
+macro_rules! bulk_simple {
+    ($n: expr) => {
+        #[bench]
+        fn bulk_simple(b: &mut Bencher) {
+            let data = make_data($n);
+            b.iter(|| {
+                let mt: MerkleTreeSimple<Chunk4096, Type>;
+                mt = MerkleTreeSimple::new_and_rebuild(data.clone());
+                test::black_box(mt);
+            });
         }
-        test::black_box(mt);
-    });
+    };
 }
 
-
-#[bench] #[ignore]
-fn n_x_4096_step_by_step_sha256_simple(b: &mut Bencher) {
-    b.iter(|| {
-        let mut mt: MerkleTreeSimple<&'static [u8], Sha256>;
-        mt = MerkleTreeSimple::default();
-        for x in DATA_1000_X4096.iter() {
-            mt.push(x.as_ref());
+macro_rules! step_by_step_generic {
+    ($n: expr) => {
+        #[bench]
+        fn step_by_step_generic(b: &mut Bencher) {
+            let data = make_data($n);
+            b.iter(|| {
+                let mut mt: MerkleTree<MemoryDataStorage<Chunk4096>, MemoryTreeStorage<Type>>;
+                mt = MerkleTree::default();
+                for &x in data.iter() {
+                    mt.push(x).unwrap();
+                }
+                test::black_box(mt);
+            });
         }
-        test::black_box(mt);
-    });
+    };
 }
 
-
-// -------------------------------------------------------------------------------------------------
-
-
-#[bench]
-fn n_x_4096_bulk_rust_siphash_generic_readonly(b: &mut Bencher) {
-    let data: Vec<&'static [u8]> = DATA_1000_X4096.iter().map(|v| &v[..]).collect();
-    b.iter(move || {
-        let mt: MerkleTree<MemoryReadonlyDataStorage<&'static [u8]>, MemoryTreeStorage<DefaultHash>>;
-        mt = MerkleTree::new_and_rebuild(MemoryReadonlyDataStorage::new(data.as_slice()), Default::default()).unwrap();
-        test::black_box(mt);
-    });
-}
-
-
-#[bench]
-fn n_x_4096_bulk_rust_siphash_generic(b: &mut Bencher) {
-    let data: Vec<&'static [u8]> = DATA_1000_X4096.iter().map(|v| &v[..]).collect();
-    b.iter(move || {
-        let mt: MerkleTree<MemoryDataStorage<&'static [u8]>, MemoryTreeStorage<DefaultHash>>;
-        mt = MerkleTree::new_and_rebuild(MemoryDataStorage::with_data(data.clone()), Default::default()).unwrap();
-        test::black_box(mt);
-    });
-}
-
-
-#[bench]
-fn n_x_4096_bulk_rust_siphash_simple(b: &mut Bencher) {
-    let data: Vec<&'static [u8]> = DATA_1000_X4096.iter().map(|v| &v[..]).collect();
-    b.iter(move || {
-        let mt: MerkleTreeSimple<&'static [u8], DefaultHash>;
-        mt = MerkleTreeSimple::new_and_rebuild(data.clone());
-        test::black_box(mt);
-    });
-}
-
-
-#[bench] #[ignore]
-fn n_x_4096_step_by_step_rust_siphash_generic(b: &mut Bencher) {
-    b.iter(|| {
-        let mut mt: MerkleTree<MemoryDataStorage<&'static [u8]>, MemoryTreeStorage<DefaultHash>>;
-        mt = MerkleTree::default();
-        for x in DATA_1000_X4096.iter() {
-            mt.push(x.as_ref()).unwrap();
+macro_rules! step_by_step_simple {
+    ($n: expr) => {
+        #[bench]
+        fn step_by_step_simple(b: &mut Bencher) {
+            let data = make_data($n);
+            b.iter(|| {
+                let mut mt: MerkleTreeSimple<Chunk4096, Type>;
+                mt = MerkleTreeSimple::default();
+                for &x in data.iter() {
+                    mt.push(x);
+                }
+                test::black_box(mt);
+            });
         }
-        test::black_box(mt);
-    });
+    };
 }
 
+macro_rules! step_bulk_generic {
+    ($n: expr, $name: ident, $e: expr) => {
+        mod $name {
+            use super::*;
 
-#[bench] #[ignore]
-fn n_x_4096_step_by_step_rust_siphash_simple(b: &mut Bencher) {
-    b.iter(|| {
-        let mut mt: MerkleTreeSimple<&'static [u8], DefaultHash>;
-        mt = MerkleTreeSimple::default();
-        for x in DATA_1000_X4096.iter() {
-            mt.push(x.as_ref());
+            #[bench]
+            fn generic(b: &mut Bencher) {
+                let data = make_data($n);
+                b.iter(|| {
+                    let mut mt: MerkleTree<MemoryDataStorage<Chunk4096>, MemoryTreeStorage<Type>>;
+                    mt = MerkleTree::default();
+                    for x in data.chunks($e) {
+                        mt.push_bulk(x.iter().cloned().map(Ok)).unwrap();
+                    }
+                    test::black_box(mt);
+                });
+            }
+
+            #[bench]
+            fn simple(b: &mut Bencher) {
+                let data = make_data($n);
+                b.iter(|| {
+                    let mut mt: MerkleTreeSimple<Chunk4096, Type>;
+                    mt = MerkleTreeSimple::default();
+                    for x in data.chunks($e) {
+                        mt.push_bulk(x.iter().cloned());
+                    }
+                    test::black_box(mt);
+                });
+            }
         }
-        test::black_box(mt);
-    });
+    };
+    ($n: expr) => {
+        mod step_bulk {
+            use super::*;
+
+            step_bulk_generic!($n, x1e1, 1);
+            step_bulk_generic!($n, x1e2, 10);
+            step_bulk_generic!($n, x1e3, 100);
+            step_bulk_generic!($n, x1e4, 1000);
+        }
+    };
 }
+
+macro_rules! bench_n {
+    ( $name: ident, $n: expr ) => {
+
+        #[allow(non_snake_case)]
+        mod $name {
+            use super::*;
+
+            mod x_4096 {
+                use super::*;
+
+                bulk_generic!($n);
+                bulk_generic_readonly!($n);
+                bulk_simple!($n);
+                step_by_step_generic!($n);
+                step_by_step_simple!($n);
+                step_bulk_generic!($n);
+            }
+        }
+    };
+}
+
+macro_rules! bench {
+    ( $name: ident, $fun: ty ) => {
+
+mod $name {
+    use super::*;
+    type Type = $fun;
+
+    //bench_n!(n1e1, 1);
+    //bench_n!(n1e2, 10);
+    bench_n!(n1e3, 100);
+    bench_n!(n1e4, 1000);
+    bench_n!(n1e5, 10000);
+    //bench_n!(n1e6, 100000);
+    //bench_n!(n1e7, 1000000);
+}
+    };
+}
+
+bench!(crc32, Crc32Ieee);
+bench!(sha256, Sha256);
+bench!(rust_siphash, DefaultHash);

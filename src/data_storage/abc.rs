@@ -54,7 +54,8 @@ pub trait DataStorageReadonly: fmt::Debug {
     }
 
     /// Creates an iterator over range (or slice)
-    fn range<'s: 'i, 'i>(&'s self, range: ops::Range<usize>) -> Result<Box<Iterator<Item=Result<Self::Block>> + 'i>> {
+    fn range<'s: 'i, 'i, R: Into<ops::Range<usize>>>(&'s self, range: R) -> Result<Box<Iterator<Item=Result<Self::Block>> + 'i>> {
+        let range = range.into();
         self.check_range(&range)?;
         Ok(Box::new(range.map(move |index| self.get(index) )))
     }
@@ -68,6 +69,9 @@ pub trait DataStorageReadonly: fmt::Debug {
 
 pub trait DataStorage: DataStorageReadonly {
     fn push(&mut self, data: Self::Block) -> Result<()>;
+    fn extend<DD: IntoIterator<Item=Result<Self::Block>>>(&mut self, data: DD) -> Result<()>;
+    /// Clears all data
+    fn clear(&mut self) -> Result<()>;
 }
 
 pub trait DataBlock: MTHash {

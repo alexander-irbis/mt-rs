@@ -64,7 +64,7 @@ pub trait TreeStorage: fmt::Debug {
     fn push(&mut self, level: usize, value: <Self::Algorithm as MTAlgorithm>::Value) -> Result<()>;
 
     fn extend<I>(&mut self, level: usize, other: I) -> Result<()>
-        where I: IntoIterator<Item=<Self::Algorithm as MTAlgorithm>::Value>;
+        where I: IntoIterator<Item=Result<<Self::Algorithm as MTAlgorithm>::Value>>;
 
     fn extend_from_slice(&mut self, level: usize, slice: &[<Self::Algorithm as MTAlgorithm>::Value]) -> Result<()>;
 
