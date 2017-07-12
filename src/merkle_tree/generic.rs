@@ -8,12 +8,21 @@ pub struct MerkleTree<D, T> where D: DataStorageReadonly, T: TreeStorage {
 }
 
 impl <D, T> MerkleTree<D, T> where D: DataStorageReadonly, T: TreeStorage {
-    /// Creates instance without checking of data integrity
+    /// Creates an instance without checking of data integrity
     pub fn new_unchecked(data: D, tree: T) -> Self {
         MerkleTree { data, tree }
     }
 
-    /// Creates instance and rebuilds the tree.
+    /// Creates an instance and checks both the data and the tree.
+    /// The same as to call `new_unchecked` and then `check_tree` and `check_data`
+    pub fn new_and_check(data: D, tree: T) -> Result<Self> {
+        let mt = MerkleTree::new_unchecked(data, tree);
+        mt.check_tree()?;
+        mt.check_data()?;
+        Ok(mt)
+    }
+
+    /// Creates an instance and rebuilds the tree.
     /// The same as to call `new_unchecked` and then `rebuild`
     pub fn new_and_rebuild(data: D, tree: T) -> Result<Self> {
         let mut mt = MerkleTree { data, tree };

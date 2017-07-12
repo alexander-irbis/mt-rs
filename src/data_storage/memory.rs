@@ -66,6 +66,13 @@ impl<V> MemoryDataStorage<V> where V: DataBlock {
         }
     }
 
+    pub fn with_data<VV: Into<Vec<V>>>(data: VV) -> Self {
+        MemoryDataStorage {
+            data: data.into(),
+            is_writable: true,
+        }
+    }
+
     pub fn set_writable(&mut self, is_writable: bool) {
         self.is_writable = is_writable;
     }

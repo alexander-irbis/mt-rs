@@ -1,3 +1,4 @@
+extern crate crc;
 extern crate ring;
 
 pub mod abc;
