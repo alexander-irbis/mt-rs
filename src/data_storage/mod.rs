@@ -1,4 +1,4 @@
 pub mod abc;
 pub mod memory;
 
-use self::memory::*;
+pub use self::memory::*;
