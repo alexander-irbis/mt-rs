@@ -100,7 +100,7 @@ impl fmt::Debug for ChunkedFile {
 }
 
 impl DataStorageReadonly for ChunkedFile {
-    type Block = Chunk4096;
+    type DataValue = Chunk4096;
 
     fn len(&self) -> Result<usize> {
         Ok((self.size / 4096) as usize + if self.size % 4096 == 0 { 0 } else { 1 })
@@ -110,7 +110,7 @@ impl DataStorageReadonly for ChunkedFile {
         Ok(self.size == 0)
     }
 
-    fn get(&self, index: usize) -> Result<Self::Block> {
+    fn get(&self, index: usize) -> Result<Self::DataValue> {
         let offset = index as u64 * 4096;
         if offset >= self.size {
             Err(INDEX_IS_OUT_OF_BOUNDS)?;

@@ -139,27 +139,46 @@ impl <A, D> MerkleTreeSimple<D, A> where A: MTAlgorithm, D: MTHash {
     }
 
     /// Checks the proof for a chain from a data block to the root
-    pub fn audit_proof(&self, mut index: usize) -> Result<bool> {
-        let data_hash = A::eval_hash(&self.data[index]);
-        let mut hash = &self.tree[0][index];
+    /// Returns found chain
+    pub fn audit_proof(&self, mut index: usize) -> Result<Vec<&A::Value>> {
+        let data = self.data.get(index).ok_or(AccessError::IndexIsOutOfBounds)?;
+        let data_hash = A::eval_hash(&data);
+        let mut hash = self.tree.get(0).and_then(|layer| layer.get(index))
+            .ok_or(StateError::InconsistentState)?;
         if *hash != data_hash {
-            return Ok(false);
+            Err(StateError::DataDoesNotMatchTheChecksum)?;
         }
+        let mut path = Vec::with_capacity(self.tree.len());
+        path.push(hash);
         for level in 0 .. self.tree.len() - 1 {
             let index2 = index + (index + 1) % 2 - index % 2;
-            let hash2 = self.tree[level].get(index2);
+            let hash2 = self.tree.get(level).and_then(|layer| layer.get(index2));
             let pair = match index < index2 {
-                false => (hash2.unwrap(), hash),
+                false => (hash2.ok_or(StateError::InconsistentState)?, hash),
                 true => (hash, hash2.unwrap_or(hash)),
             };
             index /= 2;
-            hash = &self.tree[level + 1][index];
-            let pair_hash = A::eval_hash(&pair);
-            if *hash != pair_hash {
-                return Ok(false);
+            hash = self.tree.get(level + 1).and_then(|layer| layer.get(index))
+                .ok_or(StateError::InconsistentState)?;
+            if *hash != A::eval_hash(&pair) {
+                Err(StateError::DataDoesNotMatchTheChecksum)?;
             }
+            path.push(hash);
         }
-        Ok(true)
+        Ok(path)
+    }
+
+    /// returns just path; may be zipped with `.audit_path()`
+    // TODO eventually replace Box with `-> impl Iterator<....>`
+    pub fn audit_path_indexes(&self, mut index: usize) -> Result<Box<Iterator<Item=(usize, usize)>>> {
+        if self.data.len() <= index {
+            Err(AccessError::IndexIsOutOfBounds)?;
+        }
+        Ok(Box::new((0 .. self.tree.len())
+            .map(move |level| {
+                index = index / 2;
+                (level, index)
+            })))
     }
 
     /// Clears all data
@@ -276,8 +295,34 @@ mod tests {
     use super::MerkleTreeSimple;
     use fun::double::DoubleHash;
     use fun::sha256::Sha256;
+    use fun::sha256::Sha256Value;
+    use util::hex2buf;
 
     static DATA: [&[u8]; 3] = [b"123", b"321", b"555"];
+
+    const H00: &str = "5a77d1e9612d350b3734f6282259b7ff0a3f87d62cfef5f35e91a5604c0490a3";
+    const H01: &str = "a13425677ad1e0a86ecef2f35a8eb276feb0e78e939ea5060c9de6c68592189c";
+    const H02: &str = "164904585a9c3493aa5ae0c0ab0dc971c0e7c92ff0bac4d0f50c48496728f440";
+
+    const H10: &str = "d6684cae6572ffb6c56dbeba44aa9e0d24e38d8d4daadbc278e883e3b45f9af3";
+    const H11: &str = "2289c8389e55a9ffbec27d9075e4752ccfe82a702738b1718335fcb276c8445a";
+
+    const H20: &str = "895073a7ee449758eec65efa6a9dcf51c41fa7b7a0e01b240c85d7fc230390e8";
+
+
+    fn sha256(s: &str) -> Sha256Value {
+        assert!(s.len() == 64);
+        let mut buf = [0u8; 32];
+        hex2buf(&mut buf[..], s).unwrap();
+        Sha256Value(buf)
+    }
+
+    fn cmp_proof(a: &[&str], b: &[&Sha256Value]) -> bool {
+        a.len() == b.len() &&
+            a.iter().cloned().map(sha256)
+                .zip(b.iter())
+                .all(|(x, &&y)| x == y)
+    }
 
     fn sample_rw_tree() -> MerkleTreeSimple<&'static [u8], DoubleHash<Sha256>> {
         let mut tree = MerkleTreeSimple::default();
@@ -290,15 +335,14 @@ mod tests {
     #[test]
     fn merkle_tree_simple_works() {
         let a = sample_rw_tree();
-        // println!("{:?}", tree);
+        //println!("{:?}", a);
         // println!("{:?}", tree.root());
-        let root = "SHA256:895073a7ee449758eec65efa6a9dcf51c41fa7b7a0e01b240c85d7fc230390e8";
-        assert_eq!(format!("{:?}", a.get_root().unwrap()), root);
+        assert_eq!(a.get_root().unwrap(), &sha256(H20));
         assert!(a.check_data().is_ok());
         assert!(a.check_tree().is_ok());
-        assert_eq!(a.audit_proof(0).unwrap(), true);
-        assert_eq!(a.audit_proof(1).unwrap(), true);
-        assert_eq!(a.audit_proof(2).unwrap(), true);
+        assert!(cmp_proof(&[H00, H10, H20], &a.audit_proof(0).unwrap()));
+        assert!(cmp_proof(&[H01, H10, H20], &a.audit_proof(1).unwrap()));
+        assert!(cmp_proof(&[H02, H11, H20], &a.audit_proof(2).unwrap()));
 
         let mut b = sample_rw_tree();
         b.clear();
@@ -330,16 +374,16 @@ mod tests {
         let mut tree = sample_rw_tree();
         assert!(tree.check_data().is_ok());
         assert!(tree.check_tree().is_ok());
-        assert_eq!(tree.audit_proof(0).unwrap(), true);
-        assert_eq!(tree.audit_proof(1).unwrap(), true);
-        assert_eq!(tree.audit_proof(2).unwrap(), true);
+        assert!(cmp_proof(&[H00, H10, H20], &tree.audit_proof(0).unwrap()));
+        assert!(cmp_proof(&[H01, H10, H20], &tree.audit_proof(1).unwrap()));
+        assert!(cmp_proof(&[H02, H11, H20], &tree.audit_proof(2).unwrap()));
 
         // Damage data
         tree.data[1] = b"666";
         assert!(tree.check_data().is_err());
-        assert_eq!(tree.audit_proof(0).unwrap(), true);
-        assert_eq!(tree.audit_proof(1).unwrap(), false);
-        assert_eq!(tree.audit_proof(2).unwrap(), true);
+        assert!(cmp_proof(&[H00, H10, H20], &tree.audit_proof(0).unwrap()));
+        assert!(tree.audit_proof(1).is_err());
+        assert!(cmp_proof(&[H02, H11, H20], &tree.audit_proof(2).unwrap()));
 
         let mut tree = sample_rw_tree();
         {
@@ -348,9 +392,9 @@ mod tests {
             layers[0][1] = layers[0][0];
         }
         assert!(tree.check_tree().is_err());
-        assert_eq!(tree.audit_proof(0).unwrap(), false);
-        assert_eq!(tree.audit_proof(1).unwrap(), false);
-        assert_eq!(tree.audit_proof(2).unwrap(), true);
+        assert!(tree.audit_proof(0).is_err());
+        assert!(tree.audit_proof(1).is_err());
+        assert!(cmp_proof(&[H02, H11, H20], &tree.audit_proof(2).unwrap()));
     }
 
     #[test]
